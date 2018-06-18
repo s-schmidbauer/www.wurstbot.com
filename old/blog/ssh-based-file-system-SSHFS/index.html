@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/tux-small_eFuQsNU.png"</img>
+   
+   
+   <h2>ssh based file system SSHFS</h2>
+   <p><h3>Mount a remote server directory through the web</h3>
+
+<p>Using an SSH, you can establish a connection to a directory on a remote host. The directory can be used to make backups to it and use it as a safe storage. </p>
+
+<p>When combining it with disk encryption on both servers, all data can be kept safe and secure.</p>
+
+<p>Disadvantages may be low(er) speed and the need for this file system to be reliably connected to the target.</p>
+
+<h3>Make sure key permissions are set right</h3>
+
+<pre><code>sudo chown ss:ss /home/ss/.ssh/id_ecdsa
+sudo chmod 400 /home/ss/.ssh/id_ecdsa
+</code></pre>
+
+<p>Add an SSH identity file to the systemwide SSH config so it can be used.
+Note sshfs is run as root!</p>
+
+<pre><code>sudo vi /etc/ssh/ssh_config
+
+    Host node2.wurstbot.com
+            IdentityFile /home/ss/.ssh/id_ecdsa
+</code></pre>
+
+<h3>Make and mount mountpoint</h3>
+
+<p>.. Using compression ( -C ) and port 3200 ( -p )</p>
+
+<pre><code>cd
+mkdir mountpount
+
+sudo sshfs -o allow_other -p 3200 admin@node2.wurstbot.com:/home/admin /home/ss/mountpoint -C
+</code></pre>
+
+<h3>Umount it</h3>
+
+<pre><code>sudo umount mountpoint
+</code></pre>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: May 25, 2017, 9:33 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:14 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         linux
+       
+         security
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

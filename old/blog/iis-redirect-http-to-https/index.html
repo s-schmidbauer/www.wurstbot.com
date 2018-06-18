@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+   
+   <h2>IIS redirect HTTP to HTTPS</h2>
+   <p><p>In case you want to redirect your unencrypted HTTP requests on your IIS to HTTPS, use this snippet in your Redirects.config file within your web root.</p>
+
+<pre><code>&lt;rule name="redirect-to-https" patternSyntax="ECMAScript" stopProcessing="true"&gt;
+    &lt;match url="(.*)" /&gt;
+    &lt;conditions&gt;
+        &lt;add input="{HTTPS}" pattern="^OFF$" /&gt;
+    &lt;/conditions&gt;
+    &lt;action type="Redirect" url="https://{HTTP_HOST}/{R:1}" appendQueryString="true" /&gt;
+&lt;/rule&gt;
+</code></pre>
+
+<p>It will redirect all incoming requests to when the protocol HTTPS is off. 
+All query strings will be appended to the URL. Make sure you have a valid certificate in place.</p>
+
+<p>You can also create such redirects using the IIS GUI.</p>
+
+<p>And watch out for redirect loops! :-)</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Feb. 9, 2017, 11:59 a.m.)</p> 
+   
+   
+    <p>updated Feb. 9, 2017, 4:38 p.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         IIS
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

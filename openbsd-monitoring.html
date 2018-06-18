@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-monitoring</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="index.html#contact">Contact</a></strong> | <strong><a href="index.html#services">Services</a></strong> | <strong><a href="index.html#about-me">About</a></strong> | <strong><a href="index.html#about-wurstbotcom">Wurstbot</a></strong> |  <strong><a href="index.html#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+<h2 id="nagios"><i class="icon-eye"></i> nagios</h2>
+
+<p>/etc/nagios/nagios.cfg </p>
+
+<p>To enable monitoring for our servers the nagios config is symlinked to <code>/var/www/etc/nagios</code> from <code>/etc/nagios</code></p>
+
+<p>Setup all required packages</p>
+
+<pre><code>doas pkg_add nagios-chroot nagios-web
+doas rcctl enable nagios
+doas rcctl enable slowcgi
+doas rcctl enable php56_fpm
+</code></pre>
+
+<p>To verify the nagios config at any time including all sub-configs</p>
+
+<pre><code>nagios -v /var/www/etc/nagios/nagios.cfg
+</code></pre>
+
+
+
+<h3 id="setup">Setup</h3>
+
+<p>To setup, create a <code>htaccess</code> file for user ‘<code>nagiosadmin</code>’ (default in nagios config) and make it readable by <code>www</code>.</p>
+
+<p>The user must match whats defined in <code>cgi.cfg</code> to be allowed for the appropriate section, e. g. config or services The setting defaults to <code>nagiosadmin</code></p>
+
+<pre><code>cd 
+doas htpasswd /var/www/.nagioshtaccess nagiosadmin
+chown www:www /var/www/.nagioshtaccess
+chmod 440 /var/www/.nagioshtaccess
+</code></pre>
+
+<p>in the /etc/httpd.conf:</p>
+
+<pre><code>authenticate with ".nagioshtaccess"
+</code></pre>
+
+<p>then, <code>rcctl reload httpd</code></p>
+
+<p>when receiving an error of ‘no permissions to view objects’, make sure the cgi auth works and the .nagioshtaccess file is correct. below only required <br>
+when htaccess is wrong (different user than nagiosadmin..)</p>
+
+<pre><code>vi /etc/nagios/cgi.cfg
+use_authentication=0
+</code></pre>
+
+<p>A working httpd config for nagios. The last section is to make <br>
+the css and images work.</p>
+
+<pre><code>server "nagios.wurstbot.com" {
+        listen on $int_if port 80
+        listen on $ext_if port 80
+        root "/nagios"
+
+    directory {
+            index "index.php"
+    }
+
+    location "/cgi-bin/nagios/*.cgi" {
+            root { "/" }
+            fastcgi socket "/run/slowcgi.sock"
+    }
+
+    location "*.php*" {
+            fastcgi socket "/run/php-fpm.sock"
+    }
+
+    location "/nagios*" {
+            root { "/nagios", strip 1 }
+            authenticate with ".nagioshtaccess"
+    }}
+
+rcctl start php56_fpm
+rcctl start slowcgi
+rcctl start nagios
+</code></pre>
+
+<p>Now it would be time to configure more commands and create servers to check a number of hosts with that exact command. Get crazy.</p>
+
+<p>Finito!</p>
+
+<hr>
+
+
+
+<h2 id="nrpe">NRPE</h2>
+
+<pre><code>/etc/nrpe.cfg
+</code></pre>
+
+<p>Install without ssl to avoid openssl.</p>
+
+<p>Define some nrpe commands on the system to be monitored so the remote nagios server can call them</p>
+
+<pre><code>pkg_add nrpe (add the one without ssl)
+
+rcctl start nrpe
+rcctl enable nrpe
+</code></pre>
+
+<p>Allow nrpe in the firewall of the systems to be monitored:</p>
+
+<pre><code>pass in on egress proto tcp from any to any port 5666
+</code></pre>
+
+<p>Setup the NRPE client</p>
+
+<pre><code>vi /etc/nrpe.cfg
+server_address=192.168.100.116
+log_facility=daemon
+server_port=5666
+allowed_hosts=127.0.0.1,192.168.100.0/24,172.16.1.0/24
+debug=0
+connection_timeout=300
+allow_weak_random_seed=0
+
+
+command[check_users]=/usr/local/libexec/nagios/check_users -w 5 -c 10
+command[check_load]=/usr/local/libexec/nagios/check_load -w 15,10,5 -c 30,25,20
+command[check_disk]=/usr/local/libexec/nagios/check_disk -w 20% -c 10%
+command[check_zombie_procs]=/usr/local/libexec/nagios/check_procs -w 5 -c 10 -s Z
+command[check_total_procs]=/usr/local/libexec/nagios/check_procs -w 150 -c 200
+command[check_disk_root]=/usr/local/libexec/nagios/check_disk -w 20 -c 10 -p /dev/wd0a
+
+rcctl restart nrpe
+</code></pre>
+
+<p>On the nagios server, define a new command using the command and use it within a service</p>
+
+<pre><code>doas vi /etc/nagios/objects/commands.cfg
+
+define command {
+    command_name    check_nrpe
+    command_line    $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$
+}
+</code></pre>
+
+<p>On the host to be monitored, setup nrpe to allow connections and define the required checks locally</p>
+
+<pre><code>doas vi /etc/nrpe.cfg
+
+allowed_hosts=127.0.0.1,93.170.104.52,93.171.216.20
+
+command[check_disk_var]=/usr/local/libexec/nagios/check_disk -w 20% -c 10% -p /var
+command[check_disk_home=/usr/local/libexec/nagios/check_disk -w 20% -c 10% -p /home
+command[check_disk_usr]=/usr/local/libexec/nagios/check_disk -w 20% -c 10% -p /usr
+command[check_disk_usr_local]=/usr/local/libexec/nagios/check_disk -w 20% -c 10% -p /usr/local
+command[check_disk_tmp]=/usr/local/libexec/nagios/check_disk -w 20% -c 10% -p /tmp
+</code></pre>
+
+<p>Finally, on the server, add the check command in a new service</p>
+
+<pre><code>doas vi /etc/nagios/objects/localhost.cfg
+
+define service{
+        use                             local-service         ; Name of service template to use
+        host_name                       node1
+        service_description             Disk /home
+        check_command                   check_nrpe!check_disk_home
+        notifications_enabled           0
+        } 
+</code></pre>
+
+<hr>
+
+
+
+<h4 id="the-hosts">The hosts</h4>
+
+<table>
+<thead>
+<tr>
+  <th>FQDN</th>
+  <th align="right">protocols</th>
+  <th align="right">country</th>
+</tr>
+</thead>
+<tbody><tr>
+  <td>mon1.wurstbot.com</td>
+  <td align="right">NRPE</td>
+  <td align="right">NL</td>
+</tr>
+<tr>
+  <td>mon3.wurstbot.com</td>
+  <td align="right">NRPE</td>
+  <td align="right">IT</td>
+</tr>
+</tbody></table>
+
+
+<hr></div></body>
+</html>

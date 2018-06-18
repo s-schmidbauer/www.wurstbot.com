@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/tux-small.png"</img>
+   
+   
+   <h2>Handy linux debugging commands</h2>
+   <p><p>I'll post some handy commands from time to time that I'll use over and over to determine issues.</p>
+
+<p>Remeber kids, always check the logs first :-)</p>
+
+<p>Show processes running, sorted by default by CPU usage</p>
+
+<pre><code>top
+</code></pre>
+
+<p>Check for free disk space</p>
+
+<pre><code>df -h
+</code></pre>
+
+<p>Check used disk space for all folders in 'myfolder'</p>
+
+<pre><code>du -sh myfolder/*
+</code></pre>
+
+<p>Summarized file usage of current folder</p>
+
+<pre><code>du -sSh *
+</code></pre>
+
+<p>List all active java processes being executed by all users</p>
+
+<pre><code>sudo ps -aux | grep java
+</code></pre>
+
+<p>List open files for process with ID 1234</p>
+
+<pre><code>lsof -p 1234
+</code></pre>
+
+<p>List open files and their network sockets for "myuser" </p>
+
+<pre><code>lsof -i -u myuser
+</code></pre>
+
+<p>Search through files recursively</p>
+
+<pre><code>grep -r /home/me *.pdf
+</code></pre>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Feb. 24, 2017, 8:57 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:13 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+         linux
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

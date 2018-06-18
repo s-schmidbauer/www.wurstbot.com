@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-mail</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="index.html#contact">Contact</a></strong> | <strong><a href="index.html#services">Services</a></strong> | <strong><a href="index.html#about-me">About</a></strong> | <strong><a href="index.html#about-wurstbotcom">Wurstbot</a></strong> |  <strong><a href="index.html#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+<h2 id="mail-servers"><i class="icon-mail"></i> Mail servers</h2>
+
+<p>To replace Gmail, wurstbot is running it’s own mail servers.</p>
+
+<p>The config is simple and the main components are <code>smtpd</code> (SMTP) and <code>dovecot</code> (IMAP).</p>
+
+<p>They allow for secure mail receiving and sending using TLS. The certs are made using <a href="https://letsencrypt.org/">LetsEncrypt</a>. Mailboxes are replicated from the primary to the secondary server using Dovecot’s <code>doveadm</code> tool.</p>
+
+
+
+<h2 id="smtpd"><i class="icon-mail"></i> SMTPD</h2>
+
+<p>/etc/mail/smtpd.conf</p>
+
+<p>Enable the service</p>
+
+<pre><code>rcctl enable smtpd
+</code></pre>
+
+<p>Make sure to uncomment tables not used like passwd or virtuals!</p>
+
+<pre><code>vi /etc/mail/smtpd.conf
+
+table aliases file:/etc/mail/aliases
+table domains file:/etc/mail/domains
+table passwd file:/etc/mail/passwd
+table virtuals file:/etc/mail/virtuals
+</code></pre>
+
+<p>To accept external mail, replace with: listen on all</p>
+
+<pre><code>listen on lo0
+listen on egress port 25
+listen on egress port 587
+</code></pre>
+
+<p>Uncomment the following to accept external mail for domain “wurstbot.com”</p>
+
+<pre><code>accept from any for domain "wurstbot.com" alias &lt;aliases&gt; deliver to mbox
+accept for local alias &lt;aliases&gt; deliver to mbox
+accept from local for any relay
+</code></pre>
+
+<p>Deliver to dovecot lmtp</p>
+
+<pre><code>accept from local for local alias &lt;aliases&gt; deliver to lmtp "/var/dovecot/lmtp" rcpt-to
+accept from any for domain &lt;domains&gt; virtual &lt;virtuals&gt; deliver to lmtp /var/dovecot/lmtp" rcpt-to
+</code></pre>
+
+<p>Setup alias, domains, virtuals and credentials for smtp</p>
+
+<pre><code>vi /etc/mail/aliases
+moo: admin
+
+vi /etc/mail/domains
+wurstbot.com
+
+vi /etc/mail/virtuals
+moo@wurstbot.com        admin@wurstbot.com
+admin@wurstbot.com      admin
+</code></pre>
+
+<hr>
+
+
+
+<h3 id="mail-tls-setup">Mail TLS setup</h3>
+
+<p>Once this is done it should relay mail to the outside</p>
+
+<p>Create smtpd key and cert with common name like IP or hostname for testing</p>
+
+<pre><code>openssl req -new -x509 -nodes -newkey rsa:4096 -keyout /etc/ssl/private/smtpd.key -out /etc/ssl/smtpd.pem -days 1095
+</code></pre>
+
+<p>Fix the permissions or smtpd wont start</p>
+
+<pre><code>doas chmod 640 /etc/ssl/private/smtpd.key
+</code></pre>
+
+<p>Create a creds file. tool does not ** the password when being typed!</p>
+
+<pre><code>smtpctl encrypt
+vi /etc/mail/creds
+admin $2..
+</code></pre>
+
+<p>In /etc/mail/smtpd.conf, mail1 is the name of the macro and can be anything</p>
+
+<pre><code>pki mail1 certificate  "/etc/ssl/smtpd.pem"
+pki mail1 key          "/etc/ssl/private/smtpd.key"
+
+table creds file:/etc/mail/creds
+listen on all port 25 tls pki mail1 auth &lt;creds&gt;
+listen on all port 587 tls-require pki mail1 auth &lt;creds&gt;
+listen on all port 465 smtps pki mail1 auth &lt;creds&gt;
+</code></pre>
+
+<p>Use auth-optional if you dont want to enforce auth</p>
+
+<hr>
+
+
+
+<h2 id="dovecot"><i class="icon-mail"></i>  Dovecot</h2>
+
+<p>/etc/dovecot/dovecot.conf</p>
+
+<p>Raise openfiles limit in /etc/login.conf for the dovecot user</p>
+
+<pre><code>dovecot:\
+        :openfiles=2048:\
+        :tc=daemon:
+</code></pre>
+
+<p>All defaults in /etc/dovecot/dovecot.conf</p>
+
+<pre><code>protocols = imap lmtp pop3
+listen = *, ::
+!include conf.d/*.conf
+!include_try local.conf
+</code></pre>
+
+<p>Set the mail location you want (mandatory)</p>
+
+<pre><code>vi /etc/dovecot/conf.d/10-mail.conf
+mail_location = mbox:~/mail:INBOX=/var/mail/%u
+</code></pre>
+
+<p>Make a self signed cert</p>
+
+<pre><code>openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/dovecot.pem -out /etc/ssl/dovecotcert.pem
+</code></pre>
+
+<p>Make sure SSL paths are right and we use secure ciphers.</p>
+
+<pre><code>vi /etc/dovecot/conf.d/10-ssl.conf
+ssl_cert = &lt;/etc/ssl/dovecotcert.pem
+ssl_key = &lt;/etc/ssl/private/dovecot.pem
+ssl_dh_parameters_length = 4096
+ssl_protocols = !SSLv3 !SSLv2
+ssl_cipher_list = AES128+EECDH:AES128+EDH
+ssl_prefer_server_ciphers = yes
+ssl_options = no_compression
+</code></pre>
+
+<p>Enable imaps on port 993 in 10-master.conf</p>
+
+<pre><code>  inet_listener imaps {
+    port = 993
+    ssl = yes
+  }
+</code></pre>
+
+<p>Dovecot sync between mailboxes using a ssh key on primary to connect to remote. For one user or all. See also: <a href="https://wiki2.dovecot.org/Tools/Doveadm/Sync">Doveadm sync</a></p>
+
+<p>To get going, create an non-password protected ssh key. the command below usually needs to be run twice..</p>
+
+<p>Add a cronjob to do this hourly or so</p>
+
+<pre><code>touch ~/.ssh/id_ecdsa
+chmod 400 ~/.ssh/id_ecdsa
+doveadm sync -u admin ssh -i ~/.ssh/myid admin@backup-host doveadm dsync-server -u admin
+</code></pre>
+
+<p>On the remote host, add the pub key to the authorized keys</p>
+
+<p>Running it for all users did not work</p>
+
+<pre><code>doveadm sync -A ssh -i .ssh/myid admin@backup-host doveadm dsync-server -A
+</code></pre>
+
+<p>To make a backup, just copy the mbox file. use -C to remove the folder crap and just keep the files.</p>
+
+<pre><code>doas tar cfz ~/admin-mbox.tar.gz -C /var/mail/admin
+</code></pre>
+
+<p>Configure your mail client! For any questions, send me an email.</p>
+
+<hr>
+
+
+
+<h3 id="spamd"><i class="icon-fire"></i> SPAMD</h3>
+
+<p>/etc/mail/spamd.conf</p>
+
+<pre><code>rcctl enable spamd
+rcctl set spamd flags -v
+</code></pre>
+
+<p>add our local network to nospamd table. all other will suffer from torture ;)</p>
+
+<pre><code>echo '192.168.100.0' &gt;&gt; /etc/mail/nospamd
+</code></pre>
+
+<p>in /etc/pf.conf, remove regular smtp binding. port 25 will be forwarded to spamd on port 8025. from there, spamd-white will <br>
+be forwarded to port smtp</p>
+
+<pre><code>pass in on egress proto tcp to any port smtp
+pass in on egress proto tcp to any port submission
+</code></pre>
+
+<p>rules for spamd(8) are as following:</p>
+
+<pre><code>table &lt;spamd-white&gt; persist
+table &lt;nospamd&gt; persist file "/etc/mail/nospamd"
+pass in on egress proto tcp from any to any port smtp rdr-to 127.0.0.1 port spamd
+pass in on egress proto tcp from &lt;nospamd&gt; to any port smtp
+pass in log on egress proto tcp from &lt;spamd-white&gt; to any port smtp
+pass out log on egress proto tcp to any port smtp
+
+pfctl -nf /etc/pf.conf
+pfctl -f /etc/pf.conf
+rcctl restart spamd
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="squirrelmail"><i class="icon-globe"></i>  Squirrelmail</h2>
+
+<p>We’re installing this webmail client to use our mail server. It’s old and ugly but solid and has not many requirements.</p>
+
+<pre><code>doas pkg_add php
+doas rcctl enable php56_fpm
+doas rcctl start php56_fpm
+</code></pre>
+
+<p>Get the program from the web</p>
+
+<pre><code>download squirrelmail-1.4.22.tar.gz
+tar xfz squirrelmail-1.4.22.tar.gz
+doas mv squirrelmail /var/www
+</code></pre>
+
+<p>Create a few more folders in the directory and correct permissions</p>
+
+<pre><code>cd /var/www/squirremail
+doas mkdir data temp attach
+chown -R root:wheel .
+./configure
+doas chmod 0775 data/ temp/ attach/
+doas chmod 0660 data/* temp/* attach/*
+</code></pre>
+
+<p>Configure squirrelmail by using the built-in perl script</p>
+
+<pre><code>./configure
+</code></pre>
+
+<p>Setup the server to your mail server, per default that’s localhost.</p>
+
+<p>I did not figure out how to use TLS with Squirrelmail, even when specifying the correct ports and enable TLS. The issue seems to be that Dovecot does not know the CA and adding the Let’s Encrypt did not solve the issue. Nevermind, our mail server is local. <strong>Don’t use this setup if your using a remote mail server with unencrypted data being sent to it!</strong></p>
+
+<p>In your <code>/etc/httpd.conf</code> make a new vhost</p>
+
+<pre><code>server "webmail.wurstbot.com" {
+        listen on lo port 80
+        listen on egress port 80
+        root "/webmail"
+
+        directory {
+                index "index.php"
+        }
+
+        location "*.php*" {
+                fastcgi socket "/run/php-fpm.sock"
+        }
+
+        location "/webmail*" {
+                root { "/webmail", strip 1 }
+        }
+}
+
+
+doas rcctl reload httpd
+</code></pre>
+
+<p>See if all is good</p>
+
+<p><a href="http://webmail.wurstbot.com/src/configtest.php">http://webmail.wurstbot.com/src/configtest.php</a></p>
+
+<p>Edit the config by hand to point the data and attach directory like this. <br>
+Otherwise the application tries to point to some weird place:</p>
+
+<pre><code>$data_dir                 = SM_PATH . 'data/';
+$attachment_dir           = SM_PATH . 'attach/';
+</code></pre>
+
+<p>That should be it!</p>
+
+<hr>
+
+
+
+<h4 id="the-hosts">The hosts</h4>
+
+<table>
+<thead>
+<tr>
+  <th>FQDN</th>
+  <th align="right">protocols</th>
+  <th align="right">country</th>
+</tr>
+</thead>
+<tbody><tr>
+  <td>mail2.wurstbot.com</td>
+  <td align="right">smtp, ssmtp, smtps, imap, imaps</td>
+  <td align="right">CZ</td>
+</tr>
+<tr>
+  <td>mail3.wurstbot.com</td>
+  <td align="right">smtp, ssmtp, smtps, imap, imaps</td>
+  <td align="right">IT</td>
+</tr>
+</tbody></table>
+
+
+<hr></div></body>
+</html>

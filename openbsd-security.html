@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-security</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="#about-me">About</a></strong> | <strong><a href="#about-wurstbotcom">Wurstbot</a></strong> | <strong><a href="#contact">Contact</a></strong> | <strong><a href="#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+
+
+<h2 id="acme-client">acme-client</h2>
+
+<p>/etc/acme-client.conf</p>
+
+<p>This program allows us to automate the creation of our free (!) <a href="https://letsencrypt.org/">letsencrypt</a> TLS certificates. They can be renewed every 90 days automatically (create a cronjob to run the cert creation command below)</p>
+
+<p>We setup a config so acme-client knows what we want.</p>
+
+<pre><code>doas vi /etc/acme-client.conf
+
+domain node2.wurstbot.com {
+        #alternative names { www.wurstbot.com }
+        domain key "/etc/ssl/private/node2.wurstbot.com.key"
+        domain certificate "/etc/ssl/node2.wurstbot.com.crt"
+        domain full chain certificate "/etc/ssl/node2.wurstbot.com.fullchain.pem"
+        sign with letsencrypt
+}
+
+domain mail2.wurstbot.com {
+...
+</code></pre>
+
+<p>In our web server config, we setup a location that allows the letsencrypt API to verify we’re in control of the domain.</p>
+
+<pre><code>doas vi /etc/httpd.conf
+
+server "node2.wurstbot.com" {
+        #alias "mail2.wurstbot.com"
+        listen on lo port 80
+        listen on egress port 80
+        root "/wurstbot.com"
+
+        location "/.well-known/acme-challenge/*" {
+                root "/acme"
+                root strip 2
+        }
+}
+
+doas rcctl reload httpd
+</code></pre>
+
+<p>Make sure name resolution works and the location with the acme challenge can be served.</p>
+
+<p>Generate all that’s necessary key by contacting the letsencrypt api.</p>
+
+<pre><code>doas acme-client -vAD node2.wurstbot.com
+</code></pre>
+
+<p>Check the output log to see if all worked out and continue.</p>
+
+<p>Then, in httpd.conf use your newly created certificate.</p>
+
+<pre><code>listen on egress tls port 443
+tls certificate "/etc/ssl/node2.wurstbot.com.fullchain.pem"
+tls key "/etc/ssl/private/node2.wurstbot.com.key"
+</code></pre>
+
+<p>.. and restart the httpd</p>
+
+<pre><code>doas rcctl restart httpd
+</code></pre>
+
+<p>also use the certificate in required other places of course..</p>
+
+<hr>
+
+
+
+<h2 id="tor"><i class="icon-mute"></i> Tor</h2>
+
+<p>/etc/tor/torrc</p>
+
+<p>Add it and generate the identity key</p>
+
+<pre><code>doas pkg_add tor
+doas vi /etc/tor/torrc
+doas tor-gencert --create-identity-key -i /etc/tor/authority_identity_key
+</code></pre>
+
+<p>put the password hash in the tor config: HashedControlPassword 16:…..</p>
+
+<p>Let it open many files</p>
+
+<pre><code>echo 'doas sysctl kern.maxfiles=20000' &gt;&gt; /etc/sysctl.conf
+doas sysctl kern.maxfiles=20000
+
+doas rcctl enable tor
+doas rcctl start tor
+</code></pre>
+
+<p>Quick one.</p>
+
+
+
+<h3 id="tor-bridges">Tor bridges</h3>
+
+<p>I run a few Tor bridges. Below hosts run them. Tor enables people exchange information anonymously and access sites that may be restricted otherwise due to censorship.</p>
+
+<p><strong>You are free to use the hosts!</strong></p>
+
+<p>Download the tor browser from <a href="https://www.torproject.org/">TorProject</a> and unpack it.</p>
+
+
+
+<h3 id="tor-obfs-proxy">Tor obfs proxy</h3>
+
+<p>Install the go programming language and obfs4proxy</p>
+
+<pre><code>pkg_add go git
+go get git.torproject.org/pluggable-transports/obfs4.git/obfs4proxy
+cp ~/go/bin/obfs4proxy /usr/local/bin/
+</code></pre>
+
+<p>Enable obfs4proxy in the tor config. Set it to listen to static instead of dynamic ports.</p>
+
+<pre><code>ServerTransportPlugin obfs3,obfs4 exec /usr/local/bin/obfs4proxy
+ExtORPort auto
+ServerTransportListenAddr obfs3 0.0.0.0:8403
+ServerTransportListenAddr obfs4 0.0.0.0:8404
+</code></pre>
+
+<p>Done!</p>
+
+
+
+<h4 id="using-a-tor-bridge">Using a Tor bridge</h4>
+
+<p>Once done, open the Tor Browser. During setup, specify that your ISP is blocking connections to the Tor Network. In the next step, specify one of the nodes below to use it as a bridge.</p>
+
+
+
+<h4 id="related-terms">Related terms</h4>
+
+<blockquote>
+  <ul>
+  <li>Bridge relay <br>
+  <ul><li>A gateway for clients to connect ‘covertly’ to the Tor network.</li>
+  <li>This is used in networks where direct Tor access is blocked.</li>
+  <li>Some bridge relays use obfuscation tech.</li></ul></li>
+  </ul>
+  
+  <hr>
+  
+  <ul>
+  <li>Obfuscation <br>
+  <ul><li>Makes tor traffic appear as if connecting to regular web sites</li>
+  <li>Used when the users network does not tolerate Tor</li>
+  <li>Useful to hide the fact you’re using Tor (Being the only person using Tor in a network is not anonymous!)</li></ul></li>
+  </ul>
+</blockquote>
+
+
+
+<h3 id="the-hosts">The hosts</h3>
+
+<p>These hosts run the tor services. </p>
+
+<p>If you need help setting up your own Tor services, get in touch with me.</p>
+
+<table>
+<thead>
+<tr>
+  <th>IP</th>
+  <th align="right">port</th>
+  <th align="right">role</th>
+  <th align="right">obfuscation</th>
+  <th align="right">country</th>
+</tr>
+</thead>
+<tbody><tr>
+  <td>93.170.104.52</td>
+  <td align="right">8443</td>
+  <td align="right">bridge</td>
+  <td align="right">obfs3, obfs4</td>
+  <td align="right">NL</td>
+</tr>
+<tr>
+  <td>93.171.216.20</td>
+  <td align="right">8443</td>
+  <td align="right">bridge</td>
+  <td align="right">obfs3, obfs4</td>
+  <td align="right">IT</td>
+</tr>
+</tbody></table></div></body>
+</html>

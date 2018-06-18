@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-web</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="index.html#contact">Contact</a></strong> | <strong><a href="index.html#services">Services</a></strong> | <strong><a href="index.html#about-me">About</a></strong> | <strong><a href="index.html#about-wurstbotcom">Wurstbot</a></strong> |  <strong><a href="index.html#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+<p><strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+
+
+<h2 id="relayd"><i class="icon-shield"></i> relayd</h2>
+
+<p>/etc/relayd.conf</p>
+
+<p>The config  below configures a web frontend on port <code>8080</code> with 2 backends. A defined filter section which is used in the relay sections modifies arriving requests. More rules can be added of course.</p>
+
+<pre><code>rcctl relayd enable
+</code></pre>
+
+<p>The configuration is rather simple.</p>
+
+<pre><code>vi /etc/relayd.conf
+
+relayd_addr="192.168.100.116"
+http_port="8000"
+table &lt;web_hosts&gt; { 127.0.0.1, 192.168.100.115 }
+
+interval 2
+timeout 200
+prefork 2
+log updates
+
+http protocol "httpfilter" {
+    tcp { nodelay, sack, socket buffer 65536, backlog 100 }
+    return error
+}
+
+relay httpproxy {
+   listen on $relayd_addr port $http_port
+   protocol "httpfilter"
+   forward to &lt;web_hosts&gt; port 80 mode loadbalance check http "/" code 200
+}
+</code></pre>
+
+<p>Correct permissions of the newly created file. Then, start the app and check out some monitoring commands.</p>
+
+<pre><code>chmod 600 /etc/relayd.conf
+
+rcctl start relayd 
+relayctl show hosts
+relayctl monitor
+relayctl log verbose
+
+relayctl show sessions
+
+session 0:7 192.168.100.114:48684 -&gt; :0 RUNNING
+        age 00:00:00, idle 00:00:00, relay 1, pid 3300
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="httpd"><i class="icon-globe"></i> httpd</h2>
+
+<p>/etc/httpd.conf</p>
+
+<pre><code>rcctl enable httpd
+</code></pre>
+
+<p>In the config file, we setup a virtual host</p>
+
+<pre><code>local="127.0.0.1"
+int_if="192.168.100.118"   
+types { include "/usr/share/misc/mime.types" }
+
+server "www.wurstbot.com" {
+        listen on $local port 80
+        listen on $int_if port 80
+        #listen on $int_if tls port 443
+}
+
+server "ns.wurstbot.com" {
+        listen on $int_if port 80
+        listen on $ext_if port 80
+
+        # Set max upload size to 513M (in bytes)
+        connection max request body 537919488
+
+        location "/db_structure.xml" { block }
+        location "/.ht*"             { block }
+        location "/README"           { block }
+        location "/data*"            { block }
+        location "/config*"          { block }
+
+        directory {
+                index "index.php"
+        }
+
+        location "*.php*" {
+                root { "/owncloud", strip 1 }
+                fastcgi socket "/run/php-fpm.sock"
+        }
+
+        location "/owncloud*" {
+                root { "/owncloud", strip 1 }
+        }
+}
+</code></pre>
+
+<p>For cgi applications, add the following. <code>slowcgi</code> must be installed and started:  </p>
+
+<pre><code>pkg_add slowcgi
+rcctl enable slowcgi
+rcctl start slowcgi
+</code></pre>
+
+<p>Then, in the httpd.conf specify the socket used (must be living within the chroot (<code>/var/www</code> by default, so <code>/var/www/run/slowcgi.sock</code>)</p>
+
+<pre><code>location "/cgi-bin/nagios/*.cgi" { 
+            root { "/" } 
+            fastcgi socket "/run/slowcgi.sock" 
+}
+</code></pre>
+
+<p>Lots of pleasure.</p>
+
+<pre><code>echo 'hello' &gt;&gt; /var/www/htdocs/index.html
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="php-fpm"><i class="icon-magic"></i> PHP-FPM</h2>
+
+<p>/etc/php*</p>
+
+<p>Install php. php-fpm is included. symlink installed extensions from the example dir to the /etc/php-5.6 dir to use them</p>
+
+<pre><code>pkg_add php php-curl php-mysql php-zip php-gd php-mcrypt php-bz2 php-intl
+
+rcctl enable php56_fpm
+</code></pre>
+
+<p>Now, symlink the ini files of the extension you want to use from the sample to your regular php folder like this</p>
+
+<pre><code>ln -s /etc/php-5.6.sample/curl.ini /etc/php-5.6/curl.ini
+ln -s /etc/php-5.6.sample/mysql.ini /etc/php-5.6/mysql.ini                                         
+ln -s /etc/php-5.6.sample/zip.ini  /etc/php-5.6/zip.ini
+ln -s /etc/php-5.6.sample/gd.ini  /etc/php-5.6/gd.ini
+ln -s /etc/php-5.6.sample/mcrypt.ini  /etc/php-5.6/mcrypt.ini
+ln -s /etc/php-5.6.sample/bz2.ini  /etc/php-5.6/bz2.ini
+ln -s /etc/php-5.6.sample/intl.ini  /etc/php-5.6/intl.ini
+</code></pre>
+
+<p>Restart php-fpm to activate the changes so you can use your extensions.</p>
+
+<pre><code>rcctl restart php56_fpm
+</code></pre>
+
+<p>As a next step, you would use php directly from the command line or in your webserver config. See the example in the <code>httpd</code> section</p>
+
+<hr>
+
+
+
+<h2 id="squid"><i class="icon-eye"></i> squid</h2>
+
+<p>/etc/squid/squid.conf</p>
+
+<p>Our squid config is restricted to a few internal networks, and two external IPs. Unless required, you should not run squid open to the world no?</p>
+
+<pre><code>acl localnet src 10.0.0.0/8     # RFC1918 possible internal network
+acl localnet src 172.16.0.0/12  # RFC1918 possible internal network
+acl home src 212.187.3.44
+acl work src 84.207.225.37
+
+acl SSL_ports port 443
+acl Safe_ports port 80          # http
+acl Safe_ports port 21          # ftp
+acl Safe_ports port 443         # https
+acl Safe_ports port 70          # gopher
+acl Safe_ports port 210         # wais
+acl Safe_ports port 1025-65535  # unregistered ports
+acl Safe_ports port 280         # http-mgmt
+acl Safe_ports port 488         # gss-http
+acl Safe_ports port 591         # filemaker
+acl Safe_ports port 777         # multiling http
+
+http_access allow localnet
+http_access allow localhost
+http_access allow home
+http_access allow work
+</code></pre>
+
+<p>Memory cache settings</p>
+
+<pre><code>cache_mem 1024 MB
+minimum_object_size 10 KB
+maximum_object_size 10 MB
+</code></pre>
+
+<p>Uncomment and adjust the following to add a disk cache directory.</p>
+
+<pre><code>cache_dir ufs /var/squid/cache 1024 16 256
+ipcache_size 1024
+fqdncache_size 1024
+</code></pre>
+
+<p>We would like to use squidGuard</p>
+
+<pre><code>url_rewrite_program /usr/local/bin/squidGuard -c /etc/squidguard/squidguard.conf
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="squid-log-viewing"><i class="icon-eye"></i>Squid log viewing</h2>
+
+<p>To summarize log files along with user data. It’s used to determine volume or time spent on certain websites per time unit.</p>
+
+<h3 id="squidview">squidview</h3>
+
+<p>Command line with good simple interface and options <br>
+<a href="http://www.rillion.net/squidview/">http://www.rillion.net/squidview/</a></p>
+
+<p>To install, just <code>./configure ; make ; doas make install</code> .. it. </p>
+
+<p>Press <code>m</code> to toggle monitor mode and live log view (3 secs updated).  <br>
+Press <code>h</code> to to get to help. <br>
+Press <code>r</code> to read a guide.</p>
+
+<p>Search can use negation and combine terms: <code>!ads.net sex</code></p>
+
+<p>It can create CSV (text) reports of one or multiple users. <br>
+You can create an alias file to map IPs in logs to users.  <br>
+Flexible program with many options and no requirements.</p>
+
+<h3 id="screensquid">screensquid</h3>
+
+<p>Looks promising, but requires a database. Runs on perl. Did not try</p>
+
+<h3 id="calamaris">calamaris</h3>
+
+<p>Does not run due to <code>@hashTable</code> bug. Caused by too modern version of perl. Last update 8 years ago.</p>
+
+<h3 id="squidanalyzer">squidanalyzer</h3>
+
+<p>Unpack and copy squidanalyzer to the www directory.</p>
+
+<pre><code>doas mkdir /var/www/squidanalyzer
+</code></pre>
+
+<p>Make the file. Installation fails because of missing requirements.</p>
+
+<pre><code>perl Makefile.PL INSTALLDIRS=site
+make ; doas make install
+
+*failed to continue.*
+</code></pre></div></body>
+</html>

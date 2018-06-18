@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/puffy-small.png"</img>
+   
+   
+   <h2>OpenBSD setup and admin</h2>
+   <p><p>Describing a OpenBSD setup and admin tasks</p>
+
+<h2>basic documentation to follow</h2>
+
+<ul>
+<li>https://man.openbsd.org/afterboot</li>
+<li>https://www.openbsd.org/errata.html</li>
+</ul>
+
+<h2>Creating partitions</h2>
+
+<ul>
+<li>use auto MBR layout</li>
+<li>e to edit the partitions</li>
+<li>p g ... to print partitions in G</li>
+</ul>
+
+<p>That's our partitions</p>
+
+<pre><code>1.0g    /                               sda
+4.0g    swap (same size as ram)         sda
+2.0g    /tmp                            sda
+4.0g    /var                            sda
+2.0g    /var/log                        sda
+2.0g    /usr                            sda    
+4.0g    /usr/local                      sda
+2.0g    /usr/src                        sda
+2.0g    /usr/obj                        sda
+2.0g    /home                           sda
+
+2.0g    /altroot                        sdb
+10.0g   /vm                             sdb
+</code></pre>
+
+<h3>extra partitions we might want</h3>
+
+<pre><code>4g      /var/log (for systems that write lots of logs, e. g. webserver)
+4g      /var/www (for www-host, to put user-quotas on the directories) 
+20g     /vm  (for vm-host, to host virtual machines)
+2g      /altroot (alternative root being backed up, on different disk. see daily(8))
+
+big /usr and /tmp when planning to use as a build machine
+big /tmp when planning to edit big files
+</code></pre>
+
+<p>default settings for partitions are</p>
+
+<pre><code>fstype 4.2bsd, swap
+fsize 2k
+bsize 16k
+</code></pre>
+
+<p>delete all partitions</p>
+
+<pre><code>z
+</code></pre>
+
+<p>add new partition</p>
+
+<pre><code>a
+size: 1g
+</code></pre>
+
+<p>write partitions if done</p>
+
+<pre><code>w
+</code></pre>
+
+<p>and done!</p>
+
+<pre><code>x
+</code></pre>
+
+<h3>the /etc/fstab</h3>
+
+<p>the partitions are mounted safely by default and using nodev,nosuid options</p>
+
+<h3>check system time</h3>
+
+<p>show status of all ntp servers and their offsets</p>
+
+<pre><code>ntpctl -s all
+</code></pre>
+
+<h2>Networking</h2>
+
+<h3>check network config</h3>
+
+<pre><code>ifconfig -a
+
+cat /etc/hostname.em0
+</code></pre>
+
+<p>is either ¨dhcp¨ or ¨inet 192.168.1.100 netmask 255.255.255.0¨</p>
+
+<p>here is the default gateway:</p>
+
+<pre><code>cat /etc/mygate
+</code></pre>
+
+<p>our default hostname:</p>
+
+<pre><code>cat /etc/myname
+</code></pre>
+
+<p>print the route table:</p>
+
+<pre><code>route show | head -n 20
+netstat -rn | head -n 20
+</code></pre>
+
+<p>flush the routing table:</p>
+
+<pre><code>route flush
+sh -x /etc/netstart
+</code></pre>
+
+<p>when using dhcp:</p>
+
+<pre><code>route flush
+pkill dhclient
+</code></pre>
+
+<h3>configure network card</h3>
+
+<p>You can also create the files if not existing yet.
+The os will even fix the permissions for you (chown root:wheel, chmod 640)
+Aliases can be created with: 'inet alias ..' in the same fashion</p>
+
+<pre><code>doas vi /etc/hostname.em0
+inet 192.168.100.201 255.255.255.0
+</code></pre>
+
+<p>doas sh /etc/netstart</p>
+
+<p>list route table with netstat</p>
+
+<pre><code>netstat -nr
+</code></pre>
+
+<h2>Superuser rights</h2>
+
+<p>setup doas (more in man doas(8)
+allows users of wheel to run all commands while 
+keeping their basic environment variables
+!! mind the extra newline at the end of the config file!!</p>
+
+<p>Add stefan to (secondary) wheel group</p>
+
+<pre><code>user mod -S wheel stefan
+</code></pre>
+
+<p>.. configure doas to enable doas access</p>
+
+<p>allow the wheel group to doas while keeping basic env vars.
+when more env vars needed, they need to be added. see manual</p>
+
+<pre><code>vi /etc/doas.conf
+permit keepenv :wheel
+</code></pre>
+
+<h2>Handling services</h2>
+
+<p>get status of service httpd</p>
+
+<pre><code>list enabled services
+rcctl ls on
+</code></pre>
+
+<p>enable / disable services</p>
+
+<pre><code>rcctl set httpd on
+rcctl set httpd off
+</code></pre>
+
+<p>get status and flags to enable</p>
+
+<pre><code>rcctl get httpd
+rcctl getdef httpd
+</code></pre>
+
+<p>set options supported by service discovered by get. during runtime only! not persistent!
+the options are returned as servicename_optionname
+service must be enabled to set options</p>
+
+<pre><code>rcctl set httpd status on
+rcctl set httpd timeout 60
+</code></pre>
+
+<h3>More admin stuff</h3>
+
+<p>list ntp servers status</p>
+
+<pre><code>ntpctl -s status
+ntpctl -s all
+</code></pre>
+
+<p>set hostname in config file</p>
+
+<pre><code>doas vi /etc/myname
+</code></pre>
+
+<h3>/etc/login.conf:</h3>
+
+<p>define login methods allowed (passwd, yubikey, smime etc.) for default or specific user groups
+set userlimits for specific daemons, such as openfiles limits.
+set default path variables, allowed encryption ciphers etc.</p>
+
+<h3>Patching</h3>
+
+<p>install patches regularily with syspatch</p>
+
+<p>available patches</p>
+
+<pre><code>syspatch -c
+</code></pre>
+
+<p>installed patches</p>
+
+<pre><code>syspatch -l
+</code></pre>
+
+<p>install pathces</p>
+
+<pre><code>syspatch
+</code></pre>
+
+<h3>services</h3>
+
+<p>reload a service</p>
+
+<pre><code>doas /etc/rc.d/sshd reload
+</code></pre>
+
+<p>.. or ..</p>
+
+<pre><code>doas rcctl reload sshd
+</code></pre>
+
+<h3>PKG setup and installation</h3>
+
+<pre><code>doas vi /etc/pkg.conf
+installpath =   https://ftp.nluug.nl/pub/OpenBSD/%c/packages/%a/
+</code></pre>
+
+<p>set install path &lt; OpenBSD 6.1. On 6.1 and later, use the file /etc/installurl :</p>
+
+<pre><code>https://ftp.eu.openbsd.org/pub/OpenBSD/
+</code></pre>
+
+<p>install package vim. selection of version will appear.</p>
+
+<pre><code>pkg_add vim
+</code></pre>
+
+<p>search for packages</p>
+
+<pre><code>pkg_info -Q vim
+</code></pre>
+
+<p>remove packages</p>
+
+<pre><code>pkg_delete vim
+</code></pre>
+
+<p>uninstalled packages stay in the package cache.
+from there they can be installed manually by going there and</p>
+
+<pre><code>pkg_add old-packages.txz
+</code></pre>
+
+<p>add to autostart</p>
+
+<pre><code>/etc/rc.conf.local
+add ..
+pkg_scripts="php_fpm httpd"
+or ..
+doas rcctl enable php_fpm
+doas rcctl enable httpd
+</code></pre>
+
+<h2>CARP</h2>
+
+<h3>enable CARP on em0 as master</h3>
+
+<pre><code>doas sysctl net.inet.carp.allow=1
+echo 'sysctl net.inet.carp.allow=1' &gt;&gt; /etc/sysctl.conf
+doas ifconfig carp1 create
+doas ifconfig carp1 vhid 1 pass hello1 carpdev em0 advskew 100 192.168.100.200 netmask 255.255.255.0
+
+ifconfig carp1
+</code></pre>
+
+<h3>enable CARP on the backup</h3>
+
+<p>Do the same thing on the 2nd device, with a higher advskew, for example 200.
+Switch of the 1st devices network card. the carp ip will stay alive.
+Switch it back on. The carp ip will remain on the 2nd device.</p>
+
+<p>If we want the master to always try to become master again. On the master:
+sysctl net.inet.carp.preempt=1</p>
+
+<p>Switch the 2nd device network card off. the carp ip will be back on 1st device.
+When switching over, the line is 15ms delayed for a second.</p>
+
+<p>watch it with tcpdump  </p>
+
+<pre><code>doas tcpdump -i em0 -ttt proto carp
+</code></pre>
+
+<p>To make the CARP device persistent, create a file for it (both master and backup)</p>
+
+<pre><code>vi /etc/hostname.carp1
+inet 192.168.100.200 255.255.255.0 vhid 1 pass pass1 advskew 1
+sh /etc/netstart
+</code></pre>
+
+<h3>pfsync</h3>
+
+<p>have pf enabled</p>
+
+<pre><code>pfctl -e
+</code></pre>
+
+<p>..or disable it</p>
+
+<pre><code>pfctl -d
+</code></pre>
+
+<p>specify the pfsync0 device on em0 with a unicast connected sync peer
+<code>ifconfig pfsync0 syncdev em0 syncpeer 192.168.100.204 u</code>p</p>
+
+<p>.. or use multicast. Bring down the interface first to change the setting.
+The state changes can be seen by the whole network!</p>
+
+<pre><code>ifconfig pfsync0 down
+ifconfig pfsync0 syncdev em0 up
+</code></pre>
+
+<p>make the setting persistent</p>
+
+<pre><code>vi /etc/hostname.pfsync0
+up syncdev em0
+</code></pre>
+
+<p>fix the permissions, they are not corrected automatically (as with NICs)</p>
+
+<pre><code>chmod 640 /etc/hostname.pfsync0
+chown root:wheel /etc/hostname.pfsync0
+</code></pre>
+
+<p>test if</p>
+
+<pre><code>tcpdump -i em0 -ttt proto pfsync
+</code></pre>
+
+<h3>group interfaces with ifconfig</h3>
+
+<p>add carp1 interface to group internal</p>
+
+<pre><code>ifconfig carp1 group internal
+</code></pre>
+
+<p>list interfaces in group</p>
+
+<pre><code>ifconfig internal
+</code></pre>
+
+<h3>temporarily demoting carp on the master</h3>
+
+<p>apply group-wide settings like temporarily demote the carp interface (group: internal) by 100. Then, we 'promote' it again by 100 to make it master again.</p>
+
+<pre><code>ifconfig -g internal carpdemote 50
+ifconfig -g internal
+&gt;&gt; internal: carp demote count 50
+ifconfig -g internal -carpdemote 50
+&gt;&gt; internal: carp demote count 0
+</code></pre>
+
+<h3>PF</h3>
+
+<pre><code>pfctl -f  /etc/pf.conf  Load the pf.conf file
+pfctl -nf /etc/pf.conf  Parse the file, but don't load it
+pfctl -sr               Show the current ruleset
+pfctl -ss               Show the current state table
+pfctl -si               Show filter stats and counters
+pfctl -sa               Show EVERYTHING it can show
+</code></pre>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: May 25, 2017, 10:47 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:55 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         openbsd
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

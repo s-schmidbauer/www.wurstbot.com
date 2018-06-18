@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/freebsd-small_1paedjD.jpg"</img>
+   
+   
+   <h2>MySQL replication setup</h2>
+   <p><p>I'm using MySQL replication to replicate the wurstbot database to a remote server.
+Setting this up is quite simple and this article describes it.</p>
+
+<p>There are two nodes.</p>
+
+<p>node2 will pull the data from node1 over port 3306. 
+Both servers are running MySQL 5.7.17 on FreeBSD 10.3</p>
+
+<h3>Firewall rules</h3>
+
+<p>I'm using pf firewall on both nodes. </p>
+
+<p>On the node1 we need to allow incoming connections on the firewall for MySQL from node2. </p>
+
+<p>The slave on node2 uses a high port to to connect to the master (node1). No special config required here.</p>
+
+<pre><code>vi /etc/pf.conf
+
+node1=1.2.3.4
+node2=5.6.7.8
+mysql_svc = "{ 3306 }"
+
+pass in inet proto tcp from $node2 to $node1 port $mysql_svc
+</code></pre>
+
+<h3>Master settings</h3>
+
+<p>On FreeBSD, the settings for mysql are under /usr/local/etc/mysql/my.cnf.
+Only a few settings are required to be changed.</p>
+
+<p>Make sure we have a binlog</p>
+
+<pre><code>log-bin = /var/db/mysql/mysql-bin.log
+</code></pre>
+
+<p>Define which database is being logged</p>
+
+<pre><code>binlog-do-db                    = wurstbot
+</code></pre>
+
+<p>The server replication id of master is '1'</p>
+
+<pre><code>server-id                       = 1
+</code></pre>
+
+<p>Uncomment the local bind address so the server listens on all interfaces.
+Of course, this can also be set to the internal IP depending on your setup.</p>
+
+<pre><code>#bind-address                    = 127.0.0.1
+</code></pre>
+
+<p>Then we restart the server if settings have changed.</p>
+
+<pre><code>service mysql-server restart
+</code></pre>
+
+<p>Logging into our mysql console as root user, we also need to create a seperate user that we use for replication purposes only. I call it 'replication'.</p>
+
+<p>That user is granted on our master for replication purposes. The slave uses these credentials to login.</p>
+
+<pre><code>GRANT REPLICATION SLAVE ON *.* TO 'replication'@'node2' IDENTIFIED BY 'magic456'
+</code></pre>
+
+<p>Freeze DB and create the initial data.</p>
+
+<p>Before doing replication, we create an initial backup of our data. The data we transfer to the slave using SSH and restore it there. Once done and setup, only new data will be replicated.</p>
+
+<p>Still on our master, let's lock wurstbot and create a backup of it:</p>
+
+<pre><code>USE wurstbot;
+FLUSH TABLES WITH READ LOCK;
+SHOW MASTER STATUS;
+
+root@localhost [wurstbot]&gt; show master status;
++------------------+----------+-------------------+------------------+---------------------------------------------+
+| File             | Position | Binlog_Do_DB      | Binlog_Ignore_DB | Executed_Gtid_Set                           |
++------------------+----------+-------------------+------------------+---------------------------------------------+
+| mysql-bin.000052 |    10419 | wurstbot,wurstbot |                  | 5d21b009-e0c0-11e6-90ee-52540032e0ff:1-1188 |
++------------------+----------+-------------------+------------------+---------------------------------------------+
+</code></pre>
+
+<p>Open a new SSH session to the master, as fiddling around with data in the console will unlock the database again. You don't want that in this state. </p>
+
+<p>We rely on the Position and File state above to specify on our slave soon.</p>
+
+<p>On node1 in the separate session do a dump of the database</p>
+
+<pre><code>mysqldump -u root -p --opt wurstbot &gt; wurstbot.sql
+</code></pre>
+
+<p>Then, you can unlock the database again on the master and leave the console.</p>
+
+<pre><code>UNLOCK  TABLES;
+EXIT
+</code></pre>
+
+<p>Set permissions of the backup file, move to admin folder</p>
+
+<pre><code>chown admin:admin wurstbot.sql
+mv wurstbot.sql /home/admin
+</code></pre>
+
+<p>Now, the backup should be copied from the master server to your workstation and to the slave. Or directly from the master node to th e slave node, also fine.</p>
+
+<h3>Slave configuration</h3>
+
+<p>So far we have (almost) not done anything replication-specific on our master - except stating that our wurstbot database should be bin-logged and our master is server 1.</p>
+
+<p>You guessed right, our slave is becoming server 2 then. 
+Let's first restore our backup from the master.</p>
+
+<p>On the slave node, node2 restore the dump.</p>
+
+<pre><code>mysql -u root -p wurstbot &lt; wurstbot.sql
+</code></pre>
+
+<p>It's time to adjust the MySQL settings on the slave.
+In /usr/local/etc/mysql/my.conf:</p>
+
+<pre><code>server-id                       = 2
+relay-log                       = /var/db/mysql/mysql-relay-bin.log
+binlog_do_db               = wurstbot
+</code></pre>
+
+<p>Now we need to restart the slave server as well.</p>
+
+<pre><code>service mysql-server restart
+</code></pre>
+
+<h3>Activate the replication</h3>
+
+<p>That's all good, basic stuff so far. The magic happens in the next few lines:</p>
+
+<ul>
+<li>We specify the master host and which user and pass we use to connect there</li>
+<li>We specify the master log file number and index (LOG_POS) where it can start from</li>
+<li>We activate the slave </li>
+</ul>
+
+<p>Let's make it happen</p>
+
+<pre><code>mysql -u root -p
+
+CHANGE MASTER TO MASTER_HOST='node1', MASTER_USER='replication', MASTER_PASSWORD='magic456', MASTER_LOG_FILE='mysql-bin.000052', MASTER_LOG_POS=10419;
+START SLAVE;
+</code></pre>
+
+<p>Awesome! If there did not show any error up, congratulations. It appears the sync is working.
+To check if it actually is, check the replication status and use pretty formatting.</p>
+
+<pre><code>   SHOW SLAVE STATUS\G;
+</code></pre>
+
+<p>If it says 'waiting for replication from master ' you have reached your goal.</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: March 19, 2017, 7:22 p.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:15 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+         security
+       
+         mysql
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/apache-small_TUyft13.png"</img>
+   
+   
+   <h2>secure apache 2.4 config example</h2>
+   <p><h3>Check the apache version</h3>
+
+<pre><code>apachectl -V
+</code></pre>
+
+<h3>Make secure key</h3>
+
+<pre><code>openssl ecdsa ...
+</code></pre>
+
+<h3>Make directories for certs and keys</h3>
+
+<pre><code>mkdir -p /etc/ssl/certs
+mkdir -p /etc/ssl/private
+chown -R root:root /etc/ssl/*
+chmod -R 600 /etc/ssl/*
+</code></pre>
+
+<h3>Make sure modules required are loaded</h3>
+
+<pre><code>vi /usr/local/etc/apache24/httpd.conf:
+
+LoadModule wsgi_module libexec/apache24/mod_wsgi.so
+LoadModule headers_module libexec/apache24/mod_headers.so
+LoadModule ssl_module libexec/apache24/mod_ssl.so
+</code></pre>
+
+<h3>Config itself</h3>
+
+<pre><code>ServerName www.wurstbot.com
+
+## Default Overrides
+ServerSignature Off
+ServerTokens Prod
+Timeout 5
+
+SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
+
+&lt;VirtualHost *:80&gt;
+   ServerName www.wurstbot.com
+   Redirect permanent / https://www.wurstbot.com/
+&lt;/VirtualHost&gt;
+
+Listen 443
+&lt;VirtualHost *:443&gt;
+    SSLEngine on
+    SSLCertificateFile "/etc/ssl/certs/wurstbot-chain.crt"
+    SSLCertificateKeyFile "/etc/ssl/private/wurstbot.key"
+
+    SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
+    SSLProtocol All -SSLv2 -SSLv3
+    SSLHonorCipherOrder On
+    SSLCompression off
+    SSLUseStapling on
+    SSLSessionTickets Off
+
+    Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    Header set Content-Security-Policy "script-src 'self'; frame-ancestors 'self'; object-src: 'none'"
+    Header always append Referrer-Policy: same-origin
+    Header always append X-Frame-Options SAMEORIGIN
+    Header always append X-Content-Type-Options nosniff
+    Header always append X-XSS-Protection "1; mode=block"
+.....
+</code></pre>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: May 25, 2017, 9:17 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:09 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         apache
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

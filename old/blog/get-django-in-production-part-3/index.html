@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/django-small_514wEuL.png"</img>
+   
+   
+   <h2>Get Django in production - Part 3</h2>
+   <p><p>In the last article about this topic we've created the environment necessary to run our Django app. 
+In the first part of the article we setup our web server. Now it's time to make some last fixes and get started for real.</p>
+
+<h3>Fixing permissions</h3>
+
+<p>Right now, the directory permissions are probably a bit ugly and require fixing. That's being done here. </p>
+
+<p>The wurstbot user  (as which the application is running as) can read and write all, the web server only read for the most.</p>
+
+<pre><code>cd /usr/local/www/wurstbot/wurstbot/wurstbot
+chown -R wurstbot:www *
+chmod -R 750 *
+
+root@server:/usr/local/www/wurstbot/wurstbot/wurstbot # ls -la
+total 128
+drwxr-x---  9 wurstbot  www    512 Jan 22 11:22 .
+drwxr-x---  6 wurstbot  www    512 Jan 18 00:54 ..
+drwxr-x---  4 wurstbot  www    512 Jan 21 14:45 about
+drwxr-x---  5 wurstbot  www    512 Jan 21 15:05 blog
+drwxr-x---  4 wurstbot  www    512 Jan 21 07:15 contact
+-rwxr-x---  1 wurstbot  www  86016 Jan 22 11:24 db.sqlite3
+-rwxr-x---  1 wurstbot  www    806 Jan 17 15:49 manage.py
+</code></pre>
+
+<p>The stuff in our media (where we're writing uploaded files to) requires special permissions for the web server, it also must have write access there.</p>
+
+<pre><code>chmod -R 770 media/*
+</code></pre>
+
+<h3>Integrate apps into your project</h3>
+
+<p>Make sure to integrate all apps used by your project in the setting.py of your project. Also, allow your own hostname in production (when not using 127.0.0.1 anymore).</p>
+
+<p>We also set DEBUG to false temporarily to see if we actually cannot see any errors anymore :-)</p>
+
+<pre><code>ALLOWED_HOSTS = ['www.wurstbot.com']
+PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
+DEBUG = False
+</code></pre>
+
+<p>Add all required apps to INSTALLED_APPS</p>
+
+<pre><code>'blog',
+'contact',
+'about',
+'pagedown',
+'markdown_deux',
+</code></pre>
+
+<p>Add templates path to TEMPLATES</p>
+
+<pre><code>    'DIRS': [
+      os.path.join(PROJECT_ROOT, 'templates')
+    ],
+</code></pre>
+
+<h3>Setup static and media files folders</h3>
+
+<p>Assuming our static and media files are served from /media/ and /static, recursively, use following settings to integrate the folders in your project. </p>
+
+<p>In our environment we've put the static and media folders within your project folder, but they can be anywhere when specified right</p>
+
+<pre><code>#media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+
+#static files
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+</code></pre>
+
+<p>With DEBUG enabled in your project,  use this instead of STATIC_ROOT (leave the rest as is)</p>
+
+<pre><code>STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
+</code></pre>
+
+<p>When done, run the collect static command to put all static files in the right place. This will copy all files from the static files source folders to the static files root.</p>
+
+<pre><code>python manage.py collectstatic
+</code></pre>
+
+<h3>Check admin</h3>
+
+<p>You require a superuser account to work with /admin. You can create it like this from your project directory:</p>
+
+<pre><code>python manage.py createsuperuser
+</code></pre>
+
+<p>Now, you're able to login at /admin with these credentials.</p>
+
+<h3>Final checks</h3>
+
+<p>Restart apache and see whats going on. Check if uploading files works and nothing blows up when touching it ;-) Later you can just reload the config</p>
+
+<pre><code>apachectl restart
+tail -f /var/log/http-error.log
+tail -f /var/log/http-access.log
+apachectl graceful
+</code></pre>
+
+<p>Open a browser at your new home page. Tadaaa!</p>
+
+<h3>Next steps</h3>
+
+<p>Harden your Django settings</p>
+
+<p>Follow the guide on Djangoproject to harden your projects settings.py to use for production. 
+A few small and simple tweaks should be done. Not a big deal to do but really important! Disable debugging should be the first step.</p>
+
+<p>Using MySQL</p>
+
+<p>As having a SQLite3 database might be not doing it for you in production, you might want to change your Django project to use MySQL instead. To install it and how to configure it, see here the relevant blog article.</p>
+
+<p>Any questions or suggestions?</p>
+
+<p>Post them in a comment. Thanks for reading!</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 31, 2017, 7:13 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:57 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         django
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

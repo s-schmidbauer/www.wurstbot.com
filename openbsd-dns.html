@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-dns</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="index.html#contact">Contact</a></strong> | <strong><a href="index.html#services">Services</a></strong> | <strong><a href="index.html#about-me">About</a></strong> | <strong><a href="index.html#about-wurstbotcom">Wurstbot</a></strong> |  <strong><a href="index.html#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+<h2 id="unbound"><i class="icon-unlink"></i> unbound</h2>
+
+<p>/var/unbound/etc/unbound.conf</p>
+
+<p>A local caching name server. Listen on local interfaces port 53. We use a stub zone to foward local queries to NSD.</p>
+
+<pre><code>server:
+        interface: 127.0.0.1
+        interface: 192.168.100.118
+        interface: ::1
+        do-ip6: yes
+
+    access-control: 0.0.0.0/0 refuse
+    access-control: 127.0.0.0/8 allow
+    access-control: 192.168.100.0/24 allow
+    access-control: ::0/0 refuse
+    access-control: ::1 allow
+
+    hide-identity: yes
+    hide-version: yes
+
+    do-not-query-localhost: no
+    local-zone: "wurstbot.com" nodefault
+
+    # root key file, automatically updated
+    #auto-trust-anchor-file: "/var/unbound/etc/root.key"
+
+remote-control:
+        control-enable: yes
+        control-use-cert: no
+        control-interface: /var/run/unbound.sock
+
+stub-zone:
+       name: "wurstbot.com"
+       stub-addr: 127.0.0.1@5353
+</code></pre>
+
+<p>then, in /etc/resolv.conf:</p>
+
+<pre><code>search wurstbot.com
+domain wurstbot.com
+nameserver 192.168.100.116
+nameserver 192.168.100.115
+
+unbound-control-setup #to generate keys for remote control
+rcctl start unbound
+rcctl reload unbound
+unbound-control status
+</code></pre>
+
+<p>To enable DNSSEC, specify a file location to be written that unbound can read from. This was NOT working. name resolution was broken after activating it.</p>
+
+<p>the root anchor gets updated automatically according to documentation.</p>
+
+<pre><code>unbound-anchor -a /var/unbound/db/root.key
+</code></pre>
+
+<p>in the unbound.conf</p>
+
+<pre><code>auto-trust-anchor-file: "/var/unbound/etc/root.key"
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="nsd"><i class="icon-exchange"></i> NSD</h2>
+
+<p>/var/nsd/etc/nsd.conf</p>
+
+<p>We use bind to present our local zones like wurstbot.com with <code>A</code> records to internal IP addresses to our clients. NSD binds to the 5353 port of the servers local interfaces. NSD only can do AXFR zone transfers, so the fallback part below is needed to provide the slave <code>request-xfr</code></p>
+
+<pre><code>rcctl enable nsd
+vi /var/nsd/etc/nsd.conf
+
+server:
+        hide-version: yes
+        verbosity: 2
+        database: "" # disable database
+        ip-address: 127.0.0.1
+        ip-address: 192.168.100.118
+        port: 5353
+
+remote-control:
+        control-enable: yes
+</code></pre>
+
+<p>On master, provide to slave</p>
+
+<pre><code>key:
+        name: "wurstbotkey"
+        algorithm: hmac-sha256
+        secret: "*******"
+
+pattern:
+
+    name: "toslave"
+    notify: 192.168.100.115 wurstbotkey
+    provide-xfr: 192.168.100.115 wurstbotkey
+    allow-axfr-fallback: yes
+
+zone:
+        name: "wurstbot.com"
+        zonefile: "wurstbot.com.zone"
+        include-pattern: "toslave"
+zone:
+        name: "100.168.192.in-addr.arpa"
+        zonefile: "wurstbot.com.reverse"
+        include-pattern: "toslave"
+</code></pre>
+
+<p>On the slave, pull from master on port 5353</p>
+
+<pre><code>key:
+        name: "wurstbotkey"
+        algorithm: hmac-sha256
+        secret: "gsJQqhLnBfV/Qqdc/BqUC1p+yNg28ev2R2oxLbxg+wo="
+pattern:
+        name: "frommaster"
+        allow-notify: 192.168.100.116 wurstbotkey
+        request-xfr: AXFR 192.168.100.116@5353 wurstbotkey
+        allow-axfr-fallback: yes
+zone:
+        name: "wurstbot.com"
+        zonefile: "wurstbot.com.zone"
+        include-pattern: "frommaster"
+zone:
+        name: "100.168.192.in-addr.arpa"
+        zonefile: "wurstbot.com.reverse"
+        include-pattern: "frommaster"
+</code></pre>
+
+<p>On master</p>
+
+<pre><code>nsd-control notify
+</code></pre>
+
+<p>On slave, check logs after running this</p>
+
+<pre><code>nsd-control force_update wurstbot.com
+</code></pre>
+
+<p>Restart to activate changes for stub zone!</p>
+
+<pre><code>rcctl restart nsd
+dig @127.0.0.1 -p 53 google.com
+dig @127.0.0.1 -p 53 ns.wurstbot.com
+</code></pre>
+
+<p>Test the zone transfer</p>
+
+<pre><code>dig axfr @ns.wurstbot.com
+</code></pre>
+
+<p>On dns master and notify slave. Raise serial in master zone file when doing  a change, then on master:</p>
+
+<pre><code>nsd-control notify wurstbot.com
+</code></pre>
+
+<p>On dns slave, start transfer and check for new serial</p>
+
+<pre><code>nsd-control transfer
+nsd-control force_transfer wurstbot.com
+nsd-control zonestatus wurstbot.com
+</code></pre>
+
+
+
+<h3 id="zones"><i class="icon-magic"></i> Zones</h3>
+
+
+
+<h4 id="forward-zone">Forward zone</h4>
+
+<pre><code>vi /var/nsd/zones/wurstbot.com.zone
+</code></pre>
+
+<p>Contents of the zone file</p>
+
+<pre><code>$ORIGIN wurstbot.com.
+$TTL 86400
+
+@       3600    SOA     ns.wurstbot.com. hostmaster.wurstbot.com. (
+                        2014110502      ; serial
+                        1800            ; refresh
+                        7200            ; retry
+                        1209600         ; expire
+                        3600 )          ; negative
+
+                NS      ns.wurstbot.com.
+                NS      ns2.wurstbot.com.
+
+                MX      0 mail.wurstbot.com.
+
+@       IN      A       192.168.100.116
+ns              A       192.168.100.116
+ns2              A       192.168.100.115
+mail              A       192.168.100.116
+</code></pre>
+
+
+
+<h4 id="reverse-zone">Reverse zone</h4>
+
+<pre><code>vi /var/nsd/zones/wurstbot.com.reverse
+$ORIGIN 100.168.192.in-addr.arpa.
+$TTL 86400
+
+@ IN  SOA     ns.wurstbot.com. hostmaster.wurstbot.com. (
+                        2014110502      ; serial
+                        1800            ; refresh
+                        7200            ; retry
+                        1209600         ; expire
+                        3600 )          ; negative
+
+                        IN      NS      ns.wurstbot.com
+                        IN      NS      ns2.wurstbot.com.
+
+116                       IN      PTR     ns.wurstbot.com.
+115                       IN      PTR     ns2.wurstbot.com.
+116                       IN      PTR     www.wurstbot.com.
+</code></pre>
+
+
+
+<h2 id="resolvconf">resolv.conf</h2>
+
+<p>DNS request will be going to unbound. From there,  internal requests (to wurstbot.com) will be passed by unbound to NSD (listening on port 5353)</p>
+
+<p>The clients are only talking to unbound on our both NS:</p>
+
+<pre><code>search wurstbot.com
+domain wurstbot.com
+nameserver 192.168.100.116
+nameserver 192.168.100.115
+</code></pre>
+
+<hr></div></body>
+</html>

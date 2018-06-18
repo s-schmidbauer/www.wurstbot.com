@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-setup</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="index.html#contact">Contact</a></strong> | <strong><a href="index.html#services">Services</a></strong> | <strong><a href="index.html#about-me">About</a></strong> | <strong><a href="index.html#about-wurstbotcom">Wurstbot</a></strong> |  <strong><a href="index.html#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+<h2 id="basics"><i class="icon-tasks"></i> basics</h2>
+
+<p>Set a install URL to get your updates and packages from</p>
+
+<pre><code>cat 'https://eu.ftp.openbsd.org/pub/OpenBSD' &gt;&gt; /etc/installurl
+</code></pre>
+
+<p>Upgrade installed packages</p>
+
+<pre><code>pkg_add -uv
+</code></pre>
+
+<p>Patch the system</p>
+
+<pre><code>syspatch
+</code></pre>
+
+
+
+<h2 id="doas"><i class="icon-users"></i> doas</h2>
+
+<p>/etc/doas.conf</p>
+
+<p>Following  config allows members of wheel to execute all commands while setting an unsetting some env vars</p>
+
+<pre><code>vi /etc/doas.conf
+
+permit persist setenv { -ENV PS1=$DOAS_PS1 SSH_AUTH_SOCK } :wheel
+</code></pre>
+
+<p>Logoff and back in to activate. </p>
+
+<p>From now on, you can run any program with <code>doas</code> prefixed</p>
+
+<hr>
+
+
+
+<h2 id="system-checklist"><i class="icon-ok-squared"></i> system checklist</h2>
+
+<p>A number of checks should be verified frequently to have finished correctly and setup well.</p>
+
+<ul>
+<li>run <code>syspatch</code> to install latest patches (new in OpenBSD 6.1</li>
+<li>make sure one wheel user exist for non-ldap access (not root)</li>
+<li><code>doas</code> is configured and preserves requires environment variables</li>
+<li>configure hostname.if and <code>mygate</code> and <code>myname</code> and <code>resolv.conf</code></li>
+<li>sensorsd - <a href="https://calomel.org/sensorsd_config.html">https://calomel.org/sensorsd_config.html</a></li>
+<li>power management</li>
+<li>Setup cvs - <a href="http://vasc.ri.cmu.edu/old_help/Archiving/Cvs/cvs_tutorial.texinfo.html">guide</a></li>
+<li>if required, install <code>nrpe</code> and <code>nsca-client</code> to enable monitoring local system metrics</li>
+<li>make local check commands for in <code>nrpe.conf</code></li>
+</ul>
+
+<hr>
+
+
+
+<h2 id="sources"><i class="icon-coffee"></i> sources</h2>
+
+<p>Following sites were useful in making this site. <br>
+There are many helpful blogs out there waiting to be explored!</p>
+
+<p><strong>Check them out!</strong></p>
+
+<p>General:  <br>
+     - <a href="http://eradman.com/posts/run-your-own-server.html">http://eradman.com/posts/run-your-own-server.html</a></p>
+
+<p>pf  <br>
+     - <a href="https://www.openbsd.org/faq/pf/">https://www.openbsd.org/faq/pf/</a> <br>
+     - <a href="https://calomel.org/pf_hfsc.html">https://calomel.org/pf_hfsc.html</a></p>
+
+<p>openipsec / openiked <br>
+     - <a href="http://puffysecurity.com/wiki/openikedoffshore.html">http://puffysecurity.com/wiki/openikedoffshore.html</a></p>
+
+<p>NSD and unbound <br>
+ - <a href="https://wiki.archlinux.org/index.php/Nsd">https://wiki.archlinux.org/index.php/Nsd</a> <br>
+ - <a href="https://www.vultr.com/docs/running-nsd-and-unbound-on-openbsd-5-6">https://www.vultr.com/docs/running-nsd-and-unbound-on-openbsd-5-6</a> <br>
+ - <a href="https://calomel.org/unbound_dns.html">https://calomel.org/unbound_dns.html</a> <br>
+ - <a href="https://calomel.org/nsd_dns.html">https://calomel.org/nsd_dns.html</a></p>
+
+<p>dhcpd  <br>
+- <a href="https://www.pantz.org/software/dhcpd/dhcpdconfigfiles.html">https://www.pantz.org/software/dhcpd/dhcpdconfigfiles.html</a></p>
+
+<p>tftp <br>
+ - <a href="http://eradman.com/posts/autoinstall-openbsd.html">http://eradman.com/posts/autoinstall-openbsd.html</a></p>
+
+<p>sftp <br>
+ - <a href="https://calomel.org/">https://calomel.org/</a> - check out ssh_gatekeeper!</p>
+
+<p>opendnssec  <br>
+- <a href="https://calomel.org/nsd_dns.html">https://calomel.org/nsd_dns.html</a> <br>
+- <a href="https://www.opendnssec.org/wp-content/uploads/2009/06/opendnssec-start-guide.pdf">https://www.opendnssec.org/wp-content/uploads/2009/06/opendnssec-start-guide.pdf</a> <br>
+- <a href="https://www.grepular.com/Understanding_DNSSEC">https://www.grepular.com/Understanding_DNSSEC</a></p>
+
+<p>ntpd <br>
+ - <a href="https://calomel.org/ntpd.html">https://calomel.org/ntpd.html</a></p>
+
+<p>ldapd  <br>
+- <a href="https://www.tumfatig.net/20150718/opensmtpd-dovecot-and-ldapd-on-openbsd-5-7/">https://www.tumfatig.net/20150718/opensmtpd-dovecot-and-ldapd-on-openbsd-5-7/</a></p>
+
+<p>relayd <br>
+ - <a href="https://calomel.org/relayd.html">https://calomel.org/relayd.html</a></p>
+
+<p>httpd <br>
+ - <a href="http://man.openbsd.org/httpd.conf">http://man.openbsd.org/httpd.conf</a></p>
+
+<p>php-fpm <br>
+ - <a href="https://github.com/reyk/httpd/wiki/Running-ownCloud-with-httpd-on-OpenBSD">https://github.com/reyk/httpd/wiki/Running-ownCloud-with-httpd-on-OpenBSD</a></p>
+
+<hr>
+
+
+
+<h2 id="nice-to-haves"><i class="icon-calendar"></i> nice to haves</h2>
+
+<p>Think about how you can benefit from the information below in your operations. </p>
+
+<ul>
+<li>know all relevant config files and what vars they reference <br>
+(like IPs, netmasks, MACs, hostnames etc.)</li>
+<li>have a simple backup of all important config files (cvs and remote)</li>
+<li>repo server for <code>tftp</code> and as local software repository</li>
+<li>protect service reliability with QoS rules on the firewall with  <code>pf</code> <code>hfsc</code> (see <a href="#sources">sources</a>)</li>
+<li><code>dnscrypt-proxy</code> to encrypt outgoing dns querys from our NS</li>
+<li><code>dhcpd</code> synchronization with partner using <code>-y</code> and <code>-Y</code> options (see man)</li>
+<li>more spam fighting with SpamAssassin</li>
+<li>secure emails better by signing them with DKIM signatures</li>
+<li>secure DNS zone transfers between and secondary nameserver</li>
+<li>DNSSEC to also use with cert pinning and pubkey publishing (see <a href="https://calomel.org/nsd_dns.html">here</a>)</li>
+<li>SMS notifications through USB modem or web service</li>
+<li>Read sensors from motherboard and use for monitoring</li>
+</ul>
+
+<hr></div></body>
+</html>

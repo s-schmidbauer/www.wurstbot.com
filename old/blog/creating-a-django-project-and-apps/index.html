@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/django-small_TgupAFh.png"</img>
+   
+   
+   <h2>Creating a django project and apps</h2>
+   <p><p>Within this context we're going to setup a Django project, an an app and note what we need to do during or before using it in our virtual development environment.</p>
+
+<p>We described how to setup the environment here: 
+http://www.wurstbot.com/blog/setting-up-a-django-dev-environment/</p>
+
+<p>Let's start with creating a new project, I call mine "sample"</p>
+
+<h3>When creating a project</h3>
+
+<p>This should be done first when creating a project. We make a virtual environment for the project called "sample" and install Django with it's components in it using pip</p>
+
+<pre><code>cd /home/django
+</code></pre>
+
+<p><strong>get into the environment sample</strong></p>
+
+<pre><code>mkvirtualenv sample
+pip3 install Django
+</code></pre>
+
+<p><strong>how it should be</strong></p>
+
+<pre><code>(sample)django@ss-lenovo ~ $ ls
+env  sample
+
+pip install Django
+django-admin.py startproject sample
+
+(sample)django@ss-lenovo ~/sample $ ls
+bin  blog  db.sqlite3  include  lib  local  manage.py  sample  sample.sock  static
+
+cd ~/sample
+</code></pre>
+
+<p>&lt;&lt; develop code here &gt;&gt;</p>
+
+<pre><code>./manage.py migrate
+echo 'STATIC_ROOT = os.path.join(BASE_DIR, "static/")' &gt;&gt; sample/settings.py
+./manage.py collectstatic
+./manage.py runserver 0.0.0.0:8080
+
+**to get out of the environment**
+deactivate
+</code></pre>
+
+<h3>When creating an App</h3>
+
+<p>This section is used whenever you want to create a new app. I call mine "sample-app", but you might want to have an app "gallery", "contact-page" or whatever.</p>
+
+<pre><code>su django
+cd /home/django/sample
+workon sample
+django-admin.py startapp sample-app
+</code></pre>
+
+<p>workon is used to activate an virtualenv
+&lt;&lt; develop code here &gt;&gt;</p>
+
+<pre><code>./manage.py collectstatic
+./manage.py runserver 0.0.0.0:8080
+
+deactivate
+</code></pre>
+
+<h3>During development</h3>
+
+<p>You just need to activate your environment and everything you want is ready for you</p>
+
+<pre><code>su django
+cd /home/django/sample
+workon sample
+</code></pre>
+
+<ul>
+<li>change model in apps</li>
+<li>change view in apps</li>
+<li>change urls in apps and project</li>
+<li>change admin in apps</li>
+<li>change templates in apps and project</li>
+<li>change css in project</li>
+</ul>
+
+<p><strong>Running your project</strong></p>
+
+<pre><code>python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8080
+</code></pre>
+
+<p><strong>Installing requirements</strong></p>
+
+<p>It might be necessary to install some missing pieces required by your project.
+Determine the requirements are write them to requirements.txt</p>
+
+<pre><code>pip freeze &gt; requirements
+</code></pre>
+
+<p>Then, install the requirements from the file:</p>
+
+<pre><code>pip install -r requirements.txt
+</code></pre>
+
+<p><strong>Controlling the environment</strong></p>
+
+<p>Changes in the app through nginx are not visible unless the application server is restarted</p>
+
+<pre><code>sudo service uwsgi stop
+sudo service uwsgi start
+sudo service nginx reload
+</code></pre>
+
+<p>Deactive the virtualenv when done (or just close the terminal :) )</p>
+
+<pre><code>deactivate
+</code></pre>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 24, 2017, 6:49 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:55 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         django
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

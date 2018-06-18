@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/freebsd-small_VehfpAV.jpg"</img>
+   
+   
+   <h2>MYSQL database on FreeBSD</h2>
+   <p><p>On many occasions I like to use BSD as its simple to use and reliable. 
+For my Django project I wanted a MySQL in a secure environment that is also easy to install.</p>
+
+<p>Here you can see how I installed MySQL 5.7 on FreeBSD 10.1. 
+In the second step we integrate it into our Django app</p>
+
+<h3>Install and enable MySQL</h3>
+
+<p>First, we install the base package and enable it. </p>
+
+<p>After that, we can perform the secure installation script provided by MySQL giving it a basic secure setup which means set sane defaults and password policies, delete unused test data and allow MySQL root access only from localhost.</p>
+
+<pre><code>pkg install mysql57-server
+echo 'mysql_enable=YES' &gt;&gt; /etc/rc.conf
+/usr/local/etc/rc.d/mysql-server start
+mysql_secure_installation
+</code></pre>
+
+<p>After logging in to the server we create a database called "wurstbot" which will be used by our Django application</p>
+
+<pre><code>mysql -u root -p
+CREATE DATABASE wurstbot;
+</code></pre>
+
+<p>Create a user "wurstbot" with an unsafe password "secret1234". After that, we grant the user a number of permissions required by Django applications. Instead of that we could also use: GRANT ALL</p>
+
+<pre><code>CREATE USER 'wurstbot'@'localhost' IDENTIFIED BY 'secret1234';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, REFERENCES ON wurstbot.* TO
+'wurstbot'@'localhost';
+</code></pre>
+
+<p>Or delete the user later:</p>
+
+<pre><code>DROP USER 'wurstbot'@'localhost';
+</code></pre>
+
+<p>Disable the mysql user to login to the system!</p>
+
+<pre><code>chpass -s /usr/bin/false mysql
+</code></pre>
+
+<h3>Using it in Django</h3>
+
+<p>In the virtualenv of your project, install the necessary database adapter for MySQL so Python can talk to MySQL:</p>
+
+<pre><code>pip install mysql-python
+</code></pre>
+
+<p>Modify the contents of your Django settings.py accordingly to use MySQL as a database backend and specify the correct connection parameters. We assume the DB and Django application are running on the same host (127.0.0.1):</p>
+
+<pre><code>DATABASES = {
+'default': {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME': 'DB_NAME',
+    'HOST': '127.0.0.1',
+    'PORT': '3306',
+    'USER': 'root',
+    'PASSWORD': 'secret1234',
+}}
+</code></pre>
+
+<p>Run the migrations to populate the new database</p>
+
+<pre><code>python manage.py makemigrations
+python manage.py migrate
+</code></pre>
+
+<p>And you're all settled!</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 24, 2017, 11:51 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:17 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+         django
+       
+         mysql
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

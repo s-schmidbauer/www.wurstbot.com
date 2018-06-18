@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/django-small_5KwVzkL.png"</img>
+   
+   
+   <h2>Get Django in production - Part 2</h2>
+   <p><p>In the last part we did the first steps to setup our Django environment on our production server. </p>
+
+<p>That involved installing apache and mod_wsgi. We also configured apache. Before that, a basic user that our app runs as and directory for hosting the app was created.</p>
+
+<p>Now, we are creating our Django project and integrate the apps required.</p>
+
+<h3>Pack your stuff</h3>
+
+<p>Get your packages packed on your dev machine</p>
+
+<pre><code>cd /home/django/sample
+su django
+workon sample
+pip freeze &gt; requirements.txt
+tar cfz wurstbot-apps.tgz requirements.txt blog/ about/ media/ static/  ...
+scp components.tgz prod-server:
+</code></pre>
+
+<h3>Get started with setup</h3>
+
+<p>Lets make a virtualenv in our web root, also called "wurstbot". We do this as our user "wurstbot". Then, we activate the environment</p>
+
+<pre><code>su wurstbot
+virtualenv wurstbot
+cd /usr/local/www/wurstbot/wurstbot/
+source bin/activate
+</code></pre>
+
+<h3>Create the Django project</h3>
+
+<p>Within our virtualenv we create a new django project 'wurstbot'. Later, we integrate the apps, change the settings and so on. Now we have 3 wurstbot folders already, awesome :-) </p>
+
+<p>We need to install the projects requirements, for example Django along with all the 3rd party tools we used first. Therefore we've created our requirements.txt. We'll use it now to install all we need.</p>
+
+<pre><code>pip install -r requirements.txt
+django-admin startproject wurstbot
+cd wurstbot
+python manage.py makemigrations
+python manage.py migrate
+</code></pre>
+
+<p>This should work. Although there are no apps integrated yet in our newly created project, so it will be a sad, empty project. We fix that by copying the components from our stuff on the project folder level.</p>
+
+<pre><code>cp ~/components.tgz /usr/local/www/wurstbot/wurstbot/wurstbot
+tar xfz components.tgz .
+</code></pre>
+
+<p>Nice! In the next article step we integrate our apps in the project and fix all permissions and test all.</p>
+
+<p>Once all is coming together, the application will be ready!</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 27, 2017, 7:56 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:56 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+         django
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

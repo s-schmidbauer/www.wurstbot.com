@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-other</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="index.html#contact">Contact</a></strong> | <strong><a href="index.html#services">Services</a></strong> | <strong><a href="index.html#about-me">About</a></strong> | <strong><a href="index.html#about-wurstbotcom">Wurstbot</a></strong> |  <strong><a href="index.html#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+
+
+<h2 id="dhcpd"><i class="icon-exchange"></i> dhcpd</h2>
+
+<p>/etc/dhcpd.conf</p>
+
+<pre><code>rcctl enable dhcpd
+rcctl set dhcpd flags em0   #set this to the LAN interface
+</code></pre>
+
+<p>Master-slave replication</p>
+
+<pre><code>master: rcctl set dhcpd flags -y em0
+slave: rcctl set dhcpd flags -Y em0
+</code></pre>
+
+<p>vi /etc/dhcpd.conf</p>
+
+<pre><code>subnet 192.168.100.0 netmask 255.255.255.0 {
+        default-lease-time 3600;
+        max-lease-time 7200;
+        option subnet-mask 255.255.255.0;
+        option routers 192.168.100.254;
+        option domain-name 'wurstbot.com';
+        option domain-name-servers 192.168.100.118, 192.168.100.254;
+        range 192.168.100.220 192.168.100.230;
+}
+
+rcctl start dhcpd
+cat dhclient.leases.em0
+cat dhcpd.leases
+</code></pre>
+
+<p>sync must have multicast enabled on both hosts</p>
+
+<pre><code>vi /etc/sysctl.conf
+net.inet.ip.forwarding=1
+net.inet.ip.mforwarding=1
+
+vi /etc/rc.conf.local
+multicast_host=YES
+</code></pre>
+
+<p>create dhcpd key to 2nd server</p>
+
+<pre><code>dd if=/dev/random of=/var/db/dhcpd.key bs=2048 count=1
+scp /var/db/dhcpd.key admin@ns2:/var/db/dhcpd.key
+</code></pre>
+
+<p>on primary, listen on em0: <code>dhcpd -y em0 -Y em0</code> <br>
+on second, just receive on em0:  <code>dhcpd -Y em0</code></p>
+
+<hr>
+
+
+
+<h2 id="nfs"><i class="icon-file"></i> NFS</h2>
+
+<p>/etc/exports</p>
+
+<pre><code>mkdir /data
+vi /etc/exports
+/data -alldirs -ro -mapall=remote -network=192.168.100 -mask=255.255.255.0
+
+rcctl enable portmap mountd nfsd
+rcctl start portmap mountd nfsd
+rcctl reload mountd
+
+nfsstat - display statistics
+nfsstat -m - show health of mount
+showmount - show files / folders mounted by clients
+</code></pre>
+
+<p>on client, install nfs client and mount it</p>
+
+<pre><code>sudo apt-get install nfs-common
+sudo mount -t nfs -o noatime,intr 192.168.100.118:/data shared
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="ntpd"><i class="icon-calendar-empty"></i> ntpd</h2>
+
+<p>/etc/ntpd.conf</p>
+
+<p>In ntpd.conf, listen on the local IP  networks address</p>
+
+<pre><code>listen on 192.168.100.118
+servers pool.ntp.org
+sensor *
+constraints from "https://www.google.com"
+
+rcctl enable ntpd
+rcctl start ntpd
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="mysqld"><i class="icon-flash"></i> mysqld</h2>
+
+<p>/etc/my.cnf</p>
+
+<pre><code>pkg_add mariadb-server
+rcctl enable mysqld
+</code></pre>
+
+<p>Make sure to listen on an address in /etc/my.cnf</p>
+
+<pre><code>listen on 0.0.0.0
+
+mysql_install_db
+rcctl start mysqld
+mysql_secure_installation
+rcctl restart mysqld
+</code></pre>
+
+
+
+<h3 id="mysql-master-configuration">Mysql master configuration</h3>
+
+<pre><code>mysql -u root -p
+GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%' IDENTIFIED BY 'password';
+FLUSH PRIVILEGES;
+USE mydatabase;
+FLUSH TABLES WITH READ LOCK;
+SHOW MASTER STATUS;
+
+mysqldump -u root -p --opt mydatabase &gt; mydatabase.sql
+scp mydatabase.sql admin@ns2:
+</code></pre>
+
+
+
+<h3 id="slave-config">Slave config</h3>
+
+<p>create database mydatabase;</p>
+
+<pre><code>CHANGE MASTER TO MASTER_HOST='172.16.0.1',MASTER_USER='slave_user', MASTER_PASSWORD='secret', MASTER_LOG_FILE='mysql-bin.000010', MASTER_LOG_POS=326;
+</code></pre>
+
+<p>in <code>/etc/my.cnf</code> on the master</p>
+
+<pre><code>binlog_do_db            = mydatabase
+
+rcctl restart mysqld
+start slave;
+show slave status\G
+</code></pre>
+
+<hr>
+
+
+
+<h2 id="ldapd"><i class="icon-sun"></i> LDAPD</h2>
+
+<p>/etc/ldapd.conf</p>
+
+<p>secure just marks this as a trusted network. <br>
+i could not figure out how to do the tls config</p>
+
+<pre><code>rcctl enable ldapd
+
+cp /etc/examples/ldapd.conf /etc/ldapd.conf
+int_if='em1'
+listen $int_if secure
+</code></pre>
+
+<p>secure connection. symlink to default folder when using the ‘tls’ option. expects cert to be named like interface</p>
+
+<pre><code>openssl req -new -newkey rsa:2048 -nodes -keyout ns.wurstbot.com.key -out ns.wurstbot.com.csr
+openssl req -new -x509 -days 3652 -key /etc/ssl/ns.wurstbot.com.key -out /etc/ssl/ns.wurstbot.com.crt
+mv ns.wurstbot.com.* /etc/ssl
+ln -s /etc/ssl/ns.wurstbot.com.crt /etc/ldap/certs/em1.crt
+</code></pre>
+
+<p>configtest and show stats</p>
+
+<pre><code>ldapd -nf /etc/ldapd.conf
+rcctl start ldapd
+</code></pre></div></body>
+</html>

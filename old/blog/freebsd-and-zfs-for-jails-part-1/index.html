@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/freebsd-small.jpg"</img>
+   
+   
+   <h2>Freebsd and ZFS for jails - part 1</h2>
+   <p><p>Lately I was busy with FreeBSD and OpenBSD, so some basic installs have been done.</p>
+
+<p>Here some things I came across during my adventures. ZFS is certainly one of the main reasons
+to run an FreeBSD installation. Below you find a little sample of a working ZFS pool that you can use in combination with FreeBSD jails, the 2nd big selling point of this OS.</p>
+
+<p>But first, some basics.</p>
+
+<h3>Basic sysadmin stuff</h3>
+
+<p>Get the ports tree online and unpack it to /usr/ports. That will allow you to compile packages from source. Decide for yourself if you really need this. Installing packages from pre-compiled binaries is as good, but faster. I only use ports when requiring special functionality to be compiled in.</p>
+
+<pre><code>sudo portsnap fetch
+sudo portsnap extract
+</code></pre>
+
+<p>later, when you want to update your ports tree</p>
+
+<pre><code>sudo portsnap fetch update
+</code></pre>
+
+<h3>ZFS related</h3>
+
+<p>List all available disks fround at boot time</p>
+
+<pre><code>egrep ´ada[0-9]´ /var/run/dmesg.boot
+</code></pre>
+
+<p>Create a zfs pool raidz2 (raid 6) with one cache and one hot spare disk. This will create a stable enough platform to run all our VMs. Later, think about replication to a secondary node for redundancy.</p>
+
+<ul>
+<li>6 x 16GB = 96GB usable with 6 disks (4 for data, 2 for parity) </li>
+<li>1 x 16GB cache</li>
+<li>1 x 16GB hot spare</li>
+</ul>
+
+<p>Lets create this beast. We create a pool called 'tank' and add the disks founds. 
+Watch out to not add the system disk, ada1 in my case!</p>
+
+<pre><code>zpool create tank raidz2 ada2 ada3 ada4 ada5 ada6 ada7 cache ada8 spare ada9
+zpool list -v
+zpool set autoreplace=on tank
+</code></pre>
+
+<p>To monitor the pools iostats.</p>
+
+<pre><code>zpool iostat
+</code></pre>
+
+<p>Generall pool status metrics</p>
+
+<pre><code>zpool status -x
+</code></pre>
+
+<p>Do a file system check on the pool.</p>
+
+<pre><code>zpool scrub tank
+</code></pre>
+
+<h3>ZFS examples with jails</h3>
+
+<p>Create a zfs dataset and mount it to /usr/jails. Here's were we will place our FreeBSD jails.
+The folder /usr/jails is created and mounted during this.</p>
+
+<pre><code>sudo zfs create tank/jails
+sudo zfs set mountpoint=/usr/jails tank/jails
+</code></pre>
+
+<p>Enable deduplication on the highest level to consider all children ZFS sets living under it.</p>
+
+<pre><code>sudo zfs set dedup=verify tank/jails
+</code></pre>
+
+<p>Setting a zfs dataset for a jail example. An minimum, 10m are reserved for a jaill.  Each can have a maximum size of 100m. Creation of snapshots is limited to two, old snapshots will be discarded if more are created. These are all small defaults to keep the jails from filling up the disk. Doing that will help keep operations stable.</p>
+
+<pre><code>sudo zfs create tank/jails/myjail1
+sudo zfs set reservation=10m tank/jails/myjail1
+sudo zfs set quota=100m tank/jails/myjail1
+sudo zfs set snapshop_limit=2 tank/jails/myjail1
+sudo zfs set jailed=on tank/jails/myjail1
+</code></pre>
+
+<p>Nice little setup we have there. </p>
+
+<p>It only takes a few minutes and builds a solid foundation for container-ish application environments.
+Add some extras on top and you have an awesome setup there. </p>
+
+<p>ZFS offers a wide range of options like encryption, remote sync of snapshots, tagging of data and many more. </p>
+
+<p>Don't forget a solid operating system config is the most important.</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: April 27, 2017, 4:08 p.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:53 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+      
+       
+     
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

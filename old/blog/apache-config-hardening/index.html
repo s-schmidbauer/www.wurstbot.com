@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/apache-small_q3GgeaD.png"</img>
+   
+   
+   <h2>Apache config hardening</h2>
+   <p><p>Within this blog post I'd like to highlight config steps for harden the apache web server.
+Besides it's competitors being awesome, apache was and still is widely popular. </p>
+
+<p>It should be configured securely </p>
+
+<h3>Basic hardening</h3>
+
+<p>Hide the web servers version</p>
+
+<pre><code>ServerTokens ProductOnly
+</code></pre>
+
+<p>Turn off the server signature on directory listing pages</p>
+
+<pre><code>ServerSignature Off
+</code></pre>
+
+<p>Disable TRACE in the apache config</p>
+
+<pre><code>TraceEnable Off
+</code></pre>
+
+<p>Disable Keepalive for connections</p>
+
+<pre><code>KeepAlive Off
+</code></pre>
+
+<p>Disable indexing in web root</p>
+
+<pre><code>#Options Indexes FollowSymLinks
+ Options None
+</code></pre>
+
+<p>Disable welcome page by commenting it out in conf.d/welcome.conf</p>
+
+<pre><code>#Location /welcome
+</code></pre>
+
+<h3>SSL related</h3>
+
+<p>Always refer to up to date documentation and use site like the ones listed below.
+Verify your site is passing checks and draw some inspiration from them.</p>
+
+<ol>
+<li>https://cipherli.st/ </li>
+<li>https://www.ssllabs.com/</li>
+<li>https://observatory.mozilla.org/</li>
+</ol>
+
+<p>Set a decent basic SSL configuration. Allow only trustworthy SSL CipherSuites. 
+Disable SSLv2 and SSLv3. </p>
+
+<pre><code>Listen 443
+&lt;VirtualHost *:443&gt;
+    .... 
+    SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
+    SSLProtocol All -SSLv2 -SSLv3
+    SSLHonorCipherOrder On
+</code></pre>
+
+<h3>Advanced OpenSSL options</h3>
+
+<p>In case you are using an up-to-date modern apache server, you can also use these options. When using SSL stapling, a stapling cache configuration must be set outside of the vhost configuration first:</p>
+
+<pre><code>SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
+</code></pre>
+
+<p>Also, this requires the SHMCB module for apache to be enabled:</p>
+
+<pre><code>LoadModule socache_shmcb_module libexec/apache24/mod_socache_shmcb.so
+</code></pre>
+
+<p>Then, disable SSL Compression, session tickets and enable stapling within your vhost config</p>
+
+<pre><code>SSLCompression off
+SSLUseStapling on
+SSLSessionTickets Off
+</code></pre>
+
+<p>Set a HSTS (HTTP Strict Transport Security) header for your SSL-only vhosts. 
+Allow a maximum age of N seconds.</p>
+
+<pre><code>Header always set Strict­Transport­Security "max­age=86400"
+</code></pre>
+
+<p>Make secure Diffie-Hellmann parameters by using this SSL command</p>
+
+<pre><code>openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
+</code></pre>
+
+<p>.. and use it in apache</p>
+
+<pre><code>SSLOpenSSLConfCmd DHParameters "/etc/ssl/certs/dhparam.pem"
+</code></pre>
+
+<h3>Secure header configuration</h3>
+
+<p>Using apache's mod_header, you can set secure content headers like those following.</p>
+
+<p>A detailed description you can find in several forums on the web or when checking with https://observatory.mozilla.org</p>
+
+<p>Following settings allow your website to only use scripts from itself, refer to it by itself and be embedded only by itself. For a detailed description of functions please refer to the exact documentation.</p>
+
+<p>Snippet from my apache vhost.conf:</p>
+
+<pre><code>&lt;VirtualHost *:80&gt;
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+  Header set Content-Security-Policy "script-src 'self'; frame-ancestors 'self'; object-src: 'none'"
+  Header always append Referrer-Policy: same-origin
+  Header always append X-Frame-Options SAMEORIGIN
+  Header always append X-Content-Type-Options nosniff
+  Header always append X-XSS-Protection "1; mode=block"
+    ....
+</code></pre>
+
+<p>How about redirecting ALL traffic to HTTPS in the first place?</p>
+
+<pre><code>&lt;VirtualHost *:80&gt;
+   ServerName www.wurstbot.com
+   Redirect permanent / https://www.wurstbot.com/
+&lt;/VirtualHost&gt;
+</code></pre>
+
+<p>If you do that, leave the port 80 vhost config like shown here and move all the Header configuration to your HTTPS vhost config.</p>
+
+<p>Now, save the config and reload the apache config with</p>
+
+<pre><code>apachectl reload
+</code></pre>
+
+<p>After that, you can finally check your results with SSLLabs or the Mozilla observeratory.</p>
+
+<p>Let me know if you encountered any issues and good luck!</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Feb. 1, 2017, 9:30 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:08 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         security
+       
+         apache
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

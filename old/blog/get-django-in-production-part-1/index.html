@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/django-small_crccXac.png"</img>
+   
+   
+   <h2>Get Django in production - Part 1</h2>
+   <p><p>In this guide I will be describing how I setup my production server for Django.
+The setup consists of Apache 2.4 as webserver with mod_wsgi and Django 1.10.
+The host itself is running FreeBSD 10.2</p>
+
+<h3>Install requirements on server</h3>
+
+<p>We require some components: python, virtualenv, pillow (image processing), sqlite, apache2.4 + mod_wsgi. Instead of sqlite, we will later install MySQL 5.7. First, lets start with the basics</p>
+
+<pre><code>pkg install python py27-virtualenv py27-pillow py27-sqlite3 ap24-mod_wsgi4
+echo 'apache24_enable=YES' &gt;&gt; /etc/rc.conf
+echo 'sqlite3_enable=YES' &gt;&gt; /etc/rc.conf
+</code></pre>
+
+<h3>Create user and dirs</h3>
+
+<p>In this directory is where all our application folders will live, its the parent directory of all things and will be owned by the "wurstbot" user as we assign it as it's home directory during user creation</p>
+
+<pre><code>mkdir /usr/local/www/wurstbot
+adduser wurstbot
+...
+put homedir to /usr/local/www/wurstbot
+</code></pre>
+
+<h3>Apache config</h3>
+
+<p>We can start with the apache config which show also some basics about the application itself</p>
+
+<pre><code>vi /usr/local/etc/apache24/Includes/wurstbot.conf
+</code></pre>
+
+<p>In the config we define the WSGI related sessions. The application will run as the "wurstbot" user. In the path we need to specify the project directory itself and a subdirectory containing some binaries.</p>
+
+<p>As you can see, there are a few more directory definitions. These are to allow access to the media and static files which we will define later in our project's settings.py. Thats where our uploaded images and static files like css will go.</p>
+
+<p>contents of apache config</p>
+
+<pre><code># Settings
+ServerName www.wurstbot.com
+
+## Default Overrides
+ServerSignature Off
+ServerTokens Prod
+Timeout 30
+## Virtual Hosts
+&lt;VirtualHost *:80&gt;
+
+    WSGIDaemonProcess www.wurstbot.com
+python-path=/usr/local/www/wurstbot/wurstbot/wurstbot:/usr/local/www/wurstbot/wurstbot/lib/python2.7/site-packages
+    WSGIProcessGroup www.wurstbot.com
+    WSGIScriptAlias / /usr/local/www/wurstbot/wurstbot/wurstbot/wurstbot/wsgi.py
+
+    Alias /robots.txt
+/usr/local/www/wurstbot/wurstbot/wurstbot/static/robots.txt
+    Alias /favicon.ico
+/usr/local/www/wurstbot/wurstbot/wurstbot/static/favicon.ico
+    Alias /media/ /usr/local/www/wurstbot/wurstbot/wurstbot/media/
+    Alias /static/ /usr/local/www/wurstbot/wurstbot/wurstbot/static/
+
+    &lt;Directory /usr/local/www/wurstbot/wurstbot/wurstbot/media&gt;
+    Require all granted
+    &lt;/Directory&gt;
+
+    &lt;Directory /usr/local/www/wurstbot/wurstbot/wurstbot/static&gt;
+    Require all granted
+    &lt;/Directory&gt;
+
+    &lt;Directory /usr/local/www/wurstbot/wurstbot/wurstbot/wurstbot&gt;
+    &lt;Files wsgi.py&gt;
+    Require all granted
+    &lt;/Files&gt;
+    &lt;/Directory&gt;
+
+&lt;/VirtualHost&gt;
+</code></pre>
+
+<p>Now the config is done, reload apache and see whats breaking :-)</p>
+
+<pre><code>apachectl reload
+tail -f /var/log/http-error.log
+</code></pre>
+
+<p>In the next part, we will continue with configuring Django</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 26, 2017, 12:26 p.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:56 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+         django
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openbsd-firewall</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="wurstbot"><img src="wurst.png" alt="wurst" title=""> WurstBot</h1>
+
+<p><strong><a href="index.html#contact">Contact</a></strong> | <strong><a href="index.html#services">Services</a></strong> | <strong><a href="index.html#about-me">About</a></strong> | <strong><a href="index.html#about-wurstbotcom">Wurstbot</a></strong> |  <strong><a href="index.html#gpg">GPG</a> </strong></p>
+
+<hr>
+
+<p><strong>OpenBSD Setup</strong>  <br>
+<a href="openbsd-setup.html#basics">basics</a> - <a href="openbsd-setup.html#system-checklist">system checklist</a> - <a href="openbsd-setup.html#doas">doas</a> - <a href="openbsd-setup.html#nice-to-haves">nice-to-haves</a> -  <a href="openbsd-setup.html#sources">sources</a></p>
+
+<p><strong>OpenBSD  Guides</strong> <br>
+<strong><a href="openbsd-dns.html">DNS</a></strong>: <a href="openbsd-dns.html#unbound">unbound</a> - <a href="#openbsd-dns.html#nsd">NSD</a> - <strong><a href="openbsd-monitoring.html">Monitoring</a></strong>: <a href="openbsd-monitoring.html#nagios">nagios</a> - <a href="openbsd-monitoring.html#nrpe">nrpe</a> - <strong><a href="openbsd-mail.html">Mail</a></strong>: <a href="openbsd-mail.html#smtpd">smtpd</a> - <a href="openbsd-mail.html#dovecot">dovecot</a> - <a href="openbsd-mail.html#spamd">spamd</a> - <a href="openbsd-mail.html#squirrelmail">squirrelmail</a> - <strong><a href="openbsd-web.html">Web</a></strong>: <a href="openbsd-web.html#httpd">httpd</a> - <a href="openbsd-web.html#relayd">relayd</a> - <a href="openbsd-web.html#squid">squid</a> - <strong><a href="openbsd-security.html">Security</a></strong>: <a href="openbsd-security.html#acme-client">acme-client</a> - <a href="openbsd-security.html#tor">tor</a> - <strong><a href="openbsd-firewall.html">Firewall</a></strong>: <a href="openbsd-firewall.html#pf">pf</a> - <a href="openbsd-firewall.html#carp">carp</a>  - <strong><a href="openbsd-other.html">Other</a></strong>: <a href="openbsd-other.html#dhcpd">dhcpd</a> - <a href="openbsd-other.html#nfs">nfs</a> - <a href="openbsd-other.html#ntpd">ntdp</a> - <a href="openbsd-other.html#mysqld">mysqld</a> - <a href="openbsd-other.html#ldapd">ldapd</a></p>
+
+<hr>
+
+<h2 id="pf"><i class="icon-shield"></i> pf</h2>
+
+<p>/etc/pf.conf</p>
+
+
+
+<h3 id="pfsync">pfsync</h3>
+
+<p>Sync states of pf between hosts over internal interface (using multicast) <br>
+on both hosts, create a pfsync interface. use internal interface (em1) to sync</p>
+
+<pre><code>ifconfig pfsync0 172.16.0.1 or 2 255.255.255.0 syncdev em1 up
+
+vi /etc/hostname.pfsync0
+inet 172.16.0.1/2 255.255.255.0
+</code></pre>
+
+<hr>
+
+
+
+<h3 id="carp"><i class="icon-magic"></i> carp</h3>
+
+<p>Allows you to operate highly available IPs for your firewalls or other services.</p>
+
+<p>Later, we can allow carp and pfsync traffic on carp interface in pf. reload ruleset.</p>
+
+<p>Create a carp interface and bind to VIP 172.16.0.10. The master will use <code>advskew 100</code>, backup 110 or higher. Lower wins.</p>
+
+<pre><code>vi /etc/pf.conf
+carp_dev=em1
+pass out on $carp_dev proto carp
+pass out on $carp_dev proto pfsync
+pfctl -nf /etc/pf.conf
+pfctl -f /etc/pf.conf
+</code></pre>
+
+<p>Use preempt option to fail back to original master and honor <code>advskew</code> even after failing over to backup</p>
+
+<pre><code>sysctl net.inet.carp.preempt=1
+echo 'net.inet.carp.preempt=1' &gt;&gt; /etc/sysctl.conf
+</code></pre>
+
+<p>Setting up the carp interface</p>
+
+<pre><code>ifconfig carp0 create
+sysctl net.inet.carp.allow=1
+echo 'net.inet.carp.allow=1' &gt;&gt; /etc/sysctl.conf
+ifconfig carp0 vhid 1 pass foobar carpdev em1 advskew 110 172.16.0.10 netmask 255.255.255.0
+ifconfig carp0
+</code></pre>
+
+<p>To monitor multicast network traffic</p>
+
+<pre><code>tcpdump -i em1 -vv net 224.0.0.0/4
+</code></pre>
+
+<hr></div></body>
+</html>

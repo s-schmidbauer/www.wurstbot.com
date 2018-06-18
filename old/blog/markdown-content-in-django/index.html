@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/django-small_ahtum1x.png"</img>
+   
+   
+   <h2>Markdown content in Django</h2>
+   <p><p>Markdown enables to write html content in an easy way that everybody can do while writing blog posts. It's simpler to read to write and read than html.</p>
+
+<p>In this article we'll find out how to enable our Django admin page to allow us writing posts in Markdown syntax with the result that they will look great on our site later. </p>
+
+<p>Our site templates will be told how to interpret this syntax. 
+That will lead to better looking articles.</p>
+
+<h3>Install components</h3>
+
+<p>install both apps:</p>
+
+<ul>
+<li>pagedown for the admin interface</li>
+<li>markdown-deux for rendering markdown syntax in a HTML template</li>
+</ul>
+
+<p>In your virtualenv, install the components required</p>
+
+<pre><code>pip install django-markdown-deux
+pip install django-pagedown
+</code></pre>
+
+<p>.. and add both to installed apps in the project settings.py to enable them</p>
+
+<pre><code>    'pagedown',
+    'markdown_deux',
+]
+</code></pre>
+
+<h3>Markdown in Django admin</h3>
+
+<p>To use markdown within admin use django_pagedown. I'll create a new PostAdmin ModelAdmin and override the default TextField with the new widget coming from pagedown.</p>
+
+<p>Make sure to register <strong>both</strong> the model and the modeladmin in admin.py!</p>
+
+<pre><code>from pagedown.widgets import AdminPagedownWidget
+
+class PostAdmin(admin.ModelAdmin):
+    exclude = ['posted']
+    prepolutated_fields = {'slug': ('title',)}
+
+    formfield_overrides = {
+        models.TextField: {'widget': AdminPagedownWidget },
+    }
+
+admin.site.register(Post, PostAdmin)
+</code></pre>
+
+<h3>Render markdown in template:</h3>
+
+<p>We use the markdown filter on our post.body field to render the markdown syntax and make it visible.</p>
+
+<pre><code>{% extends "base.html" %}
+{% load markdown_deux_tags %}
+{% block content %}
+
+{% if post %}
+
+   {% if post.headerimage %}
+    &lt;img src="{{ post.headerimage.url }}"&lt;/img&gt;
+   {% endif %}
+
+   &lt;h1&gt;{{ post.title }}&lt;/h1&gt;
+   &lt;p&gt;{{ post.body|markdown }}&lt;/p&gt;
+</code></pre>
+
+<p>Et voila. Awesome sauce.</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 25, 2017, 8 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:55 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         django
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

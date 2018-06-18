@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/django-small.png"</img>
+   
+   
+   <h2>Setting up a Django dev environment</h2>
+   <p><p>This article is to describe how to set up a development environment for Django 1.10 under a Debian based Linux like Debian, Ubuntu or Linux Mint.</p>
+
+<p>In the first section you will learn about the tools required to be installed, later what to do when creating a new project and what to do when creating a new app and linking it into the project.</p>
+
+<h3>Install basics</h3>
+
+<p>We create a new user called django, upgrade the system and install some basic python development software packages</p>
+
+<pre><code>sudo adduser django
+sudo apt-get update &amp;&amp; sudo apt-get upgrade
+
+sudo apt-get install build-essential nginx python-setuptools python-dev python-pip python-sqlite sqlite nginx
+sudo pip install virtualenv virtualenvwrapper
+sudo apt-get install uwsgi uwsgi-plugin-python
+</code></pre>
+
+<p>Django web apps are run by using WSGI (web server gateway interface) which is an interface so your non-test webserver like nginx or apache can talk to python directly. During development, the builtin Django webserver does this for you, but for production (or testing production), you require for example UWSGI pass on requests to the webserver for you.</p>
+
+<p><strong>UWSGI config</strong></p>
+
+<pre><code>sudo mkdir -p /etc/uwsgi/sites
+sudo vi /etc/uwsgi/sites/sample.ini
+</code></pre>
+
+<p>contents of file:</p>
+
+<pre><code>[uwsgi]
+project = sample
+base = /home/django
+
+chdir = %(base)/%(project)
+home = %(base)/env/%(project)
+module = %(project).wsgi:application
+plugins = python3
+
+master = true
+processes = 2
+
+socket = %(base)/%(project)/%(project).sock
+chmod-socket = 664
+vacuum = true
+
+
+sudo vi /etc/init/uwsgi.conf
+</code></pre>
+
+<p>contents of file</p>
+
+<pre><code>description "uWSGI"
+start on runlevel [2345]
+stop on runlevel [06]
+respawn
+
+env UWSGI=/usr/bin/uwsgi
+env LOGTO=/var/log/uwsgi.log
+
+exec $UWSGI --master --emperor /etc/uwsgi/sites --die-on-term --uid django --gid www-data --stats 127.0.0.1:9191 --plugin python --logto $LOGTO
+
+sudo service uwsgi restart
+</code></pre>
+
+<p><strong>Nginx config</strong></p>
+
+<p>We install nginx to test serving the application with a "real" webserver in combination with UWSGI</p>
+
+<pre><code>sudo rm /etc/nginx/sites-enabled/default
+sudo vi /etc/nginx/sites-available/sample
+</code></pre>
+
+<p>contents of file</p>
+
+<pre><code>server {
+    listen 80;
+    server_name example.com;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /home/django/sample;
+    }
+
+    location / {
+        include         uwsgi_params;
+        uwsgi_pass      unix:/home/django/sample/sample.sock;
+        #uwsgi_pass 127.0.0.1:8080;
+    }
+}
+
+sudo ln -s /etc/nginx/sites-available/sample /etc/nginx/sites-enabled
+sudo service nginx configtest
+sudo service nginx restart
+
+su django
+cd
+
+echo "alias python=python3" &gt;&gt; ~/.bashrc
+echo "export WORKON_HOME=~/env" &gt;&gt; ~/.bashrc
+echo "source /usr/local/bin/virtualenvwrapper.sh" &gt;&gt; ~/.bashrc
+source ~/.bashrc
+</code></pre>
+
+<p>That's all for the environment for now. In a later article, we setup a project and some apps and tie it all together.</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 23, 2017, 6:21 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:55 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+         linux
+       
+         django
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

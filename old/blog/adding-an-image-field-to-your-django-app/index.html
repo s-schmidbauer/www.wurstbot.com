@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/django-small_o7MsCMa.png"</img>
+   
+   
+   <h2>Adding an image field to your Django app</h2>
+   <p><p>Adding image fields to your Django models requires some changes and components to be installed. While easy to do, finding it out is the first and most annoying step. That's what you have wurstbot for ;-)</p>
+
+<p>In our virtualenv, we upgrade pip and and install pillow, they are required by the image field. 
+Pillow is a component of the python imaging library and quite a big package.</p>
+
+<pre><code>pip install --upgrade pip
+pip install --upgrade pillow
+</code></pre>
+
+<p>In your apps' views.py, add a method to return the right image_path because the ImageField requires it to have a  an image_path. We will use this path then in the field used in the model:</p>
+
+<p>contents of views.py</p>
+
+<pre><code>def image_path(instance, filename):
+    return os.path.join('images', filename)
+</code></pre>
+
+<p>In the model, add a image field</p>
+
+<pre><code>headerimage = models.ImageField(upload_to='images', blank=True, null=True)
+</code></pre>
+
+<p>In the template, use the image's url attribute to return the full URL</p>
+
+<pre><code>   {% if post.headerimage %}
+    &lt;img src="{{ post.headerimage.url }}"&lt;/img&gt;
+   {% endif %}
+</code></pre>
+
+<p>When adding an image field, add a media url and path to the projects settings.py</p>
+
+<p>contents of settings.py</p>
+
+<pre><code>MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+</code></pre>
+
+<p>.. also, in the projects urls.py set the settings and add the static and media url patterns. You can use this for both development and production</p>
+
+<pre><code>from django.conf import settings
+from django.conf.urls.static import static
+
+..
+
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+</code></pre>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Jan. 24, 2017, 1:11 p.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:59 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         django
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

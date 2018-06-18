@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+    <img src="../../media/images/freebsd-small_Rcf1OdT.jpg"</img>
+   
+   
+   <h2>Freebsd and ZFS for jails - part 2</h2>
+   <p><p>In part 1 we've created a nice base for our FreeBSD jails, a RAID6-like ZFS pool for high redundancy.
+We've enabled de-duplication on it so as little data possible gets wasted when cloning jails. 
+A number of </p>
+
+<p>Here some more fancy samples on how to use FreeBSD jails and ZFS in combination.</p>
+
+<h3>Get to know ZFS</h3>
+
+<p>Play around with your ZFS pool and sets a bit, it's worth it. You can learn a lot about their metrics.</p>
+
+<p>To get all fields of all properties for an object, in this case tank/jails</p>
+
+<pre><code>zfs get -o all all tank/jails
+</code></pre>
+
+<h3>Snapshot ZFS</h3>
+
+<p>create recursive snapshot(s) of all datasets within tank jails named tank-jails-1</p>
+
+<pre><code>zfs snapshot -r tank/jails@tank-jails-1
+</code></pre>
+
+<p>Snapshots use a naming convention of <em>objectname@tank-jails-1</em></p>
+
+<p>To list all objects of type snapshot</p>
+
+<pre><code>zfs list -t snapshot
+</code></pre>
+
+<p>Enough of them? Recursively delete all snapshots made for tank/jails named tank-jails-1</p>
+
+<pre><code>sudo zfs destroy -R tank/jails@tank-jails-1
+</code></pre>
+
+<h3>ezjails setup and config</h3>
+
+<p>ezjails is a powerful helper abstracting away a lot of the jails complexity. It creates a basejail from which other jails can be derived. The basejail is the only full jail, the other jails are very slim. This allows for easy upgrading of dozens of environments.</p>
+
+<p>We install ezjails from ports and see how it can be integrated with our ZFS structure.</p>
+
+<pre><code>cd /usr/ports/sysutils/ezjail/ &amp;&amp; make install
+cp /usr/local/etc/ezjail.conf.sample /usr/local/etc/ezjail.conf
+
+sudo vi /usr/local/etc/ezjail.conf
+</code></pre>
+
+<p>Set a different ftp mirror, for example ftp.nl.freebsd.org</p>
+
+<pre><code>ezjail_default_flavour=¨default¨ (to omit the -f default option when creating jails)
+</code></pre>
+
+<h3>ezjail zfs related options</h3>
+
+<p>to enable zfs creating a new dataset for basejail and newjail 
+(make this before running the ezjail-admin install command!)</p>
+
+<pre><code>ezjail_use_zfz=¨YES¨
+</code></pre>
+
+<p>set the base jails directory</p>
+
+<pre><code>ezjail_jailzfs=¨tank/jails¨
+</code></pre>
+
+<p>create a seperate zfs directorz for each newly created jail</p>
+
+<pre><code>ezjail_use_zfs_for_jails=¨YES¨
+</code></pre>
+
+<p>set options for the ZFS and jails (order unclear to me)</p>
+
+<pre><code>ezjail_zfs_properties=¨-o compression=lzjb -o atime=off¨
+ezjail_zfs_jail_properties=¨-o dedup=on¨
+</code></pre>
+
+<p>The following will create our base jail where other jails are derived from and will run ¨build world". This can take some time, so be patient. </p>
+
+<p>When the ZFS options above are set a new ZFS set for <em>basejail</em> and <em>newjail</em> will be created in the given ZFS pool during. Good stuff.</p>
+
+<pre><code>service ezjail stop
+service ezjail start
+ezjail-admin install -p
+</code></pre>
+
+<p>setup a default jail flavour skeleton and set some sane defaults for jails</p>
+
+<pre><code>mkdir -p /local/jails/flavours/default/etc/rc.d
+</code></pre>
+
+<p>(check and edit default startup config of the default jails flavour)  </p>
+
+<pre><code>sudo vi /usr/jails/flavours/default/etc/rc.conf
+
+rpcbind_enable="NO"             # Disable the RPC daemon
+cron_flags="$cron_flags -J 15"  # Prevent lots of jails running cron jobs at the same time
+syslogd_flags="-ss"             # Disable syslogd listening for incoming connections
+sendmail_enable="NONE"          # Completely disable sendmail
+clear_tmp_enable="YES"          # Clear /tmp at startup
+</code></pre>
+
+<p>We copy our local resolv.conf to the default flavour. That will allow newly created jails have working name resolution</p>
+
+<pre><code>cp /etc/resolv.conf /usr/jails/flavours/default/etc
+</code></pre>
+
+<p>setup different flavours by creating skeletons copied from the default.
+we will later place in packages in the pkg folders that we compile in our
+build jail (created in the next step)</p>
+
+<pre><code>cd /usr/jails/flavours/
+cp -Rp default webserver
+cp -Rp default appserver
+mkdir -p webserver/pkg
+mkdir -p appserver/pkg
+</code></pre>
+
+<h3>Enough prep, now jails config</h3>
+
+<p>Create a cloned interface on the host for the jail</p>
+
+<pre><code>vi /etc/rc.conf
+cloned_interfaces=¨lo1¨
+service netif cloneup
+</code></pre>
+
+<p>We create the build jail with internet access. New IP addresses for loopback
+can be assigned as desired. Better: have jails communicate on their
+own public network NIC.</p>
+
+<pre><code>ezjail-admin create -f default build ´lo1|127.0.0.2,em0|192.168.100.200´
+/usr/local/etc/rc.d/ezjail.sh start build
+jls 
+ezjail-admin console www
+</code></pre>
+
+<p>Stop and remove a jail. Wiping (-w) will also remove the config files AND the ZFS dataset!
+Remove or delete <strong>only</strong> when you actually want to get rid of it!</p>
+
+<pre><code>ezjail-admin stop build
+ezjail-admin delete -w build
+zfs list
+</code></pre>
+
+<p><em>-- its gone!</em></p>
+
+<h3>Building software for the jail</h3>
+
+<pre><code>ezjail-admin start build
+ezjail-admin console build
+cd /usr/ports/www/apache24
+make distclean
+make package recursive
+</code></pre>
+
+<p>(build other software as desired. finished packages land in /var/ports/packages/)</p>
+
+<h3>Installing software and create a new jail</h3>
+
+<p>It´s not clear yet to me how the jail creation reacts to the pkg dir</p>
+
+<p>On the host machine run these commands:</p>
+
+<pre><code>mkdir /usr/jails/flavours/webserver/pkg
+cp /usr/jails/build/var/ports/packages/All/* /usr/jails/flavours/webserver/pkg
+ezjail-admin create -f webserver webserver1 ´em0|192.168.100.201´
+</code></pre>
+
+<p>Thats a lot of steps. But it allows you to build packages in a build jail, have only one fat base jail and many slim ones allowing for great isolation. No overhead madness is required. The jails are also well integrated in the</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: April 27, 2017, 4:20 p.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 9:54 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         freebsd
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

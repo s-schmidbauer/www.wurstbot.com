@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+   
+   <h2>Multiple IIS SSL sites on one IP</h2>
+   <p><h3>Problem</h3>
+
+<p>Older versions of IIS don't support SNI for server so if you want to run multiple SSL-secured sites on the same certificate and IP address, the IIS GUI has an issue with it. </p>
+
+<h3>SNI intro</h3>
+
+<p>SNI is "server name indication" and means, when your browser does a request to a HTTPS site, it actually does a HTTP request first, sends the host header along "www.wurstbot.com", tells the server it wants an SSL connection and the web server directs the request to the right backend, even if multiple configs are used using the same certs and IP</p>
+
+<p>It will complain that another site is already using this binding on this IP and activating the setting will break the config on the other site. </p>
+
+<h3>Solution</h3>
+
+<p>You can solve this issue by using a different IP for the binding
+But naturally, nobody wants to waste one IP for a site if they cannot, right? Try it like this:</p>
+
+<ul>
+<li>Install your certificate on your server</li>
+<li>For your first site, create an IIS binding using the GUI. Assign your wildcard certificate to it.</li>
+<li>For your next site you want to bind on the same IP and certificate, you need an elevated command prompt.</li>
+</ul>
+
+<p>Run this command. Replace SITENAME with the name of the site in IIS, the IP with your external IP and hostheader with the DNS name of your site, for example www.wurstbot.com</p>
+
+<pre><code>appcmd set site /site.name:{SITENAME} /+bindings.[protocol='https',bindingInformation='{IP}:443:{HOSTHEADER}']
+</code></pre>
+
+<p>Then, refresh the GUI, go to your next sites bindings and assign the certificate. </p>
+
+<p>That should do the trick!</p>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: Feb. 15, 2017, 10:12 a.m.)</p> 
+   
+   
+    <p>updated Feb. 16, 2017, 12:05 p.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         IIS
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>

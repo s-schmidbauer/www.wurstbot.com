@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="../../static/css/site.css"></link>
+<link href="https://fonts.googleapis.com/css?family=Raleway|Abel" rel="stylesheet">
+
+</head>
+
+<body>
+<div id="page">
+
+
+  <div id="menu">
+    <ul>
+      <h1>WurstBot</h1>
+      <li><a href="../../index.html">Start</a></li>
+      <li><a href="../../about/index.html">About</a></li>
+      <li><a href="../index.html">Blog</a></li>
+      <li><a href="../../faq/index.html">FAQ</a></li>
+      <li><a href="../../upload/index.html">Upload</a></li>
+      <li><a href="../../contact/stefan/index.html">Contact</a></li>
+    </ul>
+  <hr>
+  </div>
+
+
+
+
+
+
+   
+   
+   <h2>Syncing directories on nodes</h2>
+   <p><h3>Preparation work</h3>
+
+<p>Create a one-way rsync from node1 to node2 considering all required directories</p>
+
+<p>Locally create a passwordless, strong key used for sync (wurstbot-sync)</p>
+
+<pre><code>ssh-keygen -t ed25519
+</code></pre>
+
+<p>Copy the private key to node1</p>
+
+<pre><code>scp -i .ssh/id_ecdsa -P 3200 /home/ss/.ssh/wurstbot-sync admin@node1.wurstbot.com:
+</code></pre>
+
+<p>The admin user will run the rsync</p>
+
+<h3>Setup keys</h3>
+
+<p>Copy the public key to node2</p>
+
+<pre><code>scp -i .ssh/id_ecdsa -P 3200 /home/ss/.ssh/wurstbot-sync.pub admin@node2.wurstbot.com:
+</code></pre>
+
+<p>on node2, put the public key into the autorized keys of the admin user</p>
+
+<pre><code>cat /home/admin/wurstbot-sync.pub /home/admin/.ssh/authorized_keys
+</code></pre>
+
+<h3>.. using a scp script</h3>
+
+<p>I made a list of files and folders i would like to backup in backup-list.txt
+We use this little script to scp all to the node2
+We preserve their permissions and copy folders recursively</p>
+
+<pre><code>backup_list='/home/admin/backup-list.txt'
+command='scp -i /home/admin/.ssh/wurstbot-sync -r -p -P 3200'
+target=admin@node2.wurstbot.com
+target_folder=sync
+
+while read line; do
+    $command $line $target:$target_folder
+done &lt; $backup_list
+</code></pre>
+
+<p>make the script executable</p>
+
+<pre><code>chmod +x sync.sh
+</code></pre>
+
+<p>.. it will be run by a cronjob as root using rsync</p>
+
+<h3>Notes on rsync</h3>
+
+<p>rsync gives a f about the .ssh/config file. You can basically specify it, even in the ssh params in rsync with -F .ssh/config. The user (-l) and key (-i) need to be specified anyway</p>
+
+<pre><code>vi rsync.sh
+ssh="ssh -p 3200 -i /home/admin/.ssh/wurstbot-sync -l admin"
+opt="-ravzP"
+source="/etc/*.conf"
+target="admin@node2.wurstbot.com:/home/admin/sync"
+
+rsync "$opt" -e "$ssh" "$source" "$target"
+</code></pre>
+
+<h3>Using a ssh config</h3>
+
+<p>You want to use an ssh config file instead? Try this:
+create a ssh config file to simply connect to the host</p>
+
+<pre><code>vi /home/admin/.ssh/config:
+
+Host node2.wurstbot.com
+     HostName node2.wurstbot.com
+     User admin
+     Port 3200
+     IdentityFile /home/admin/.ssh/wurstbot-sync
+</code></pre>
+
+<p>just use this variable instead in your script. the params are taken from the config file.
+ssh="ssh"</p>
+
+<p>when running as a different user, e. g. root as part of a cronjob, specify the sshd config file if required</p>
+
+<pre><code>ssh="ssh -F /home/admin/.ssh/config"
+</code></pre>
+
+<h3>pulling hard with rsync...</h3>
+
+<p>this works when pulling from the client. we have a backup-list.txt containing dirs to sync.
+for each file/folder in the file, we rsync it from the ssh remote host using our wurstbot-sync private key, stored locally.</p>
+
+<p>problem is only that the admin user can basically not read anything so it´s useless.</p>
+
+<pre><code>for l in `cat backup-list.txt`; 
+
+  do rsync -avr -e "ssh -l admin -p 3200 -i .ssh/wurstbot-sync" node1.wurstbot.com:$line ./sync/$line; 
+
+done
+</code></pre>
+</p>
+
+   <div id="meta">
+   <p> -- By <strong>Stefan</strong> (created: May 25, 2017, 10:26 a.m.)</p> 
+   
+   
+    <p>updated May 25, 2017, 10:31 a.m.</p>
+   
+
+   
+    <p>category blog</p>
+   
+
+   
+     <p>tags:  
+       
+         linux
+       
+     </p>
+   
+
+   </div>
+
+   <hr>
+   <h2>Comments</h2> 
+   
+     <p>No comments yet</p>
+   
+
+   <button type="submit"><a href="comment/index.html">Comment</a></button>
+
+
+
+
+
+  <div id="footer">
+    <p>www.wurstbot.com - no rights reserved #yolo</p>
+  </div>
+
+
+</div>
+</body>
+</html>
