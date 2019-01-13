@@ -20,6 +20,16 @@
 
 <hr>
 
+<h2 id="contact">Repositories</h2>
+<p>My home config</p>
+<blockquote>
+  <ul>
+  <li>jupiter - webserver running this site - <a href="https://github.com/s-schmidbauer/jupiter">jupiter</a></li>
+  <li>x220 - thinkpad running openbsd - <a href="https://github.com/s-schmidbauer/wurstbot-hosts">x220</a></li>
+  <li>wurstbot-hosts - ansible playbook to configure openbsd - <a href="https://github.com/s-schmidbauer/wurstbot-hosts">wurstbot-hosts</a></li>
+  <li>www.wurstbot.com - this website - <a href="https://github.com/s-schmidbauer/www.wurstbot.coms">www.wurstbot.com</a></li>
+  </ul>
+</blockquote>
 
 
 <h2 id="contact">Contact</h2>
@@ -27,6 +37,7 @@
 <blockquote>
   <ul>
   <li><strong><a href="mailto:s.schmidbauer@gmail.com">Email</a></strong></li>
+  <li><a href="https://github.com/s-schmidbauer?tab=repositories">Github">Email</a></li>
   <li><a href="https://www.linkedin.com/in/stefanschmidbauer/">LinkedIn</a></li>
   <li><a href="https://www.facebook.com/stefan.schmidbauer.9">Facebook</a></li>
   </ul>
@@ -35,218 +46,9 @@
 <hr>
 
 
-
-<h2 id="services">Services</h2>
-
-
-
-<h3 id="nodes">nodes</h3>
-
-<table>
-<thead>
-<tr>
-  <th>node</th>
-  <th>ISP</th>
-  <th>IPv4</th>
-  <th></th>
-  <th>Country</th>
-</tr>
-</thead>
-<tbody><tr>
-  <td>node1</td>
-  <td><a href="https://www.vds6.net">VDS6</a></td>
-  <td>93.170.104.52</td>
-  <td></td>
-  <td>NL</td>
-</tr>
-<tr>
-  <td>node2</td>
-  <td><a href="https://www.hukot.net">hukot.net</a></td>
-  <td>46.36.36.48</td>
-  <td></td>
-  <td>CZ</td>
-</tr>
-<tr>
-  <td>node3</td>
-  <td><a href="https://www.vds6.net">VDS6</a></td>
-  <td>93.171.216.20</td>
-  <td></td>
-  <td>IT</td>
-</tr>
-</tbody></table>
-
-
-
-
-<h3 id="urls">URLs</h3>
-
-<p><a href="https://www.wurstbot.com/">https://www.wurstbot.com/</a> <br>
-<a href="https://mon1.wurstbot.com/">https://mon1.wurstbot.com/</a> <br>
-<a href="https://mon3.wurstbot.com/">https://mon3.wurstbot.com/</a> <br>
-<a href="https://webmail.wurstbot.com/">https://webmail.wurstbot.com/</a></p>
-
-<p><a href="https://node1.wurstbot.com/">https://node1.wurstbot.com/</a> <br>
-<a href="https://node2.wurstbot.com/">https://node2.wurstbot.com/</a> <br>
-<a href="https://node3.wurstbot.com/">https://node3.wurstbot.com/</a></p>
-
-<p>node3 is monitoring hidden services using <code>curl</code> <br>
-<a href="https://torstatus.wurstbot.com/">https://torstatus.wurstbot.com/</a></p>
-
-
-
-<h3 id="services-1">Services</h3>
-
-<table>
-<thead>
-<tr>
-  <th>Service</th>
-  <th>node1</th>
-  <th>node2</th>
-  <th>node3</th>
-  <th>remarks</th>
-</tr>
-</thead>
-<tbody><tr>
-  <td><strong>Web services</strong></td>
-  <td></td>
-  <td></td>
-  <td></td>
-  <td></td>
-</tr>
-<tr>
-  <td>php-fpm</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>slowcgi</td>
-  <td>yes</td>
-  <td>no</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>relayd</td>
-  <td>no</td>
-  <td>no</td>
-  <td>no</td>
-  <td></td>
-</tr>
-<tr>
-  <td>httpd</td>
-  <td><a href="https://node1.wurstbot.com">yes</a></td>
-  <td><a href="https://node2.wurstbot.com">yes</a></td>
-  <td><a href="https://node3.wurstbot.com">yes</a></td>
-  <td></td>
-</tr>
-<tr>
-  <td><strong>Email</strong></td>
-  <td></td>
-  <td></td>
-  <td></td>
-  <td></td>
-</tr>
-<tr>
-  <td>dovecot</td>
-  <td>no</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>smtpd</td>
-  <td>no</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td><strong>Monitoring</strong></td>
-  <td></td>
-  <td></td>
-  <td></td>
-  <td></td>
-</tr>
-<tr>
-  <td>nagios</td>
-  <td>yes</td>
-  <td>no</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>nagios-web</td>
-  <td><a href="https://mon1.wurstbot.com">yes</a></td>
-  <td>no</td>
-  <td><a href="https://mon3.wurstbot.com">yes</a></td>
-  <td></td>
-</tr>
-<tr>
-  <td>nrpe</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>squid</td>
-  <td>no</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>squidviewer</td>
-  <td>no</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>squirrelmail</td>
-  <td>no</td>
-  <td><a href="https://webmail.wurstbot.com">yes</a></td>
-  <td>no</td>
-  <td></td>
-</tr>
-<tr>
-  <td><strong>Other</strong></td>
-  <td></td>
-  <td></td>
-  <td></td>
-  <td></td>
-</tr>
-<tr>
-  <td>tor</td>
-  <td>yes</td>
-  <td>no</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>obfs4proxy</td>
-  <td>yes</td>
-  <td>no</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-<tr>
-  <td>acme-client</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td>yes</td>
-  <td></td>
-</tr>
-</tbody></table>
-
-
-
-
 <h2 id="about-me">About me</h2>
 
-<p>I’m in my thirties and live near Amsterdam, the Netherlands with my girlfriend Anna. </p>
+<p>I'm in my thirties and live near Amsterdam, the Netherlands with my wife Anna. </p>
 
 <p>My job is to be a system admin involving devops. My company’s customers run Linux, Unix(like) and Windows environments.</p>
 
